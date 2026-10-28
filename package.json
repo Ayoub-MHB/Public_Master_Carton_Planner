@@ -1,0 +1,13 @@
+{
+  "name": "master-carton-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Builds master cartons from one product unit, stacks them on pallets with interlocking layers, and checks them against transit tests.",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node test/engine.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+
+# company master data and analysis outputs stay outside the repository
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+data/
+master-data/

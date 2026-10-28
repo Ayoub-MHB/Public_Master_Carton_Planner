@@ -1,0 +1,1561 @@
+<title>Master Carton Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a packaging bench under a slate title band. Inputs left, one large stage right, detail tabs underneath.
+   Neutral palette: cool greys with a petrol blue accent. Carton (kraft) and pallet (wood) colours are fixed. */
+:root {
+  --bg: #EEF1F3; --surface: #ffffff; --surface-2: #F5F7F8; --ink: #22303A; --muted: #66737D; --line: #D9DFE3;
+  --accent: #1F6E8C; --accent-ink: #ffffff; --accent-soft: #DCEEF4; --head: #1F6E8C; --strong: #111A21;
+  --band: #22303A; --on-band: #ffffff;
+  --kraft-1: #c48c4e; --kraft-2: #a8743c; --kraft-3: #dcae76; --kraft-edge: #5e3e19; --wood: #9c7a55;
+  --good: #2F7D57; --warn: #B7791F; --bad: #C0392B; --grid: #D9DFE3;
+  --unit: #4F7CAC; --unit-edge: #253B52;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131A1F; --surface: #1B242B; --surface-2: #222D35; --ink: #E6ECEF; --muted: #9AA7B0; --line: #2F3B44;
+    --accent: #4FA9C9; --accent-ink: #0D1418; --accent-soft: #18323D; --head: #6BBAD6; --strong: #ffffff; --band: #0E1418;
+    --kraft-1: #c9965c; --kraft-2: #ad7b43; --kraft-3: #e0b783; --kraft-edge: #3d2810; --wood: #8a6b49;
+    --good: #5CC08A; --warn: #E0A84A; --bad: #EF7A6E; --grid: #2F3B44; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131A1F; --surface: #1B242B; --surface-2: #222D35; --ink: #E6ECEF; --muted: #9AA7B0; --line: #2F3B44;
+  --accent: #4FA9C9; --accent-ink: #0D1418; --accent-soft: #18323D; --head: #6BBAD6; --strong: #ffffff; --band: #0E1418;
+  --kraft-1: #c9965c; --kraft-2: #ad7b43; --kraft-3: #e0b783; --kraft-edge: #3d2810; --wood: #8a6b49;
+  --good: #5CC08A; --warn: #E0A84A; --bad: #EF7A6E; --grid: #2F3B44; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14.5px; line-height: 1.45; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; line-height: 1.1; text-wrap: balance; }
+h1 { font-size: 2rem; } h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: .84rem; }
+
+.bench { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; padding-bottom: 32px; }
+form.inputs { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 10px); max-height: calc(100vh - 20px); overflow-y: auto; }
+details.grp { border-bottom: 1px solid var(--line); }
+details.grp:last-of-type { border-bottom: 0; }
+details.grp > summary { cursor: pointer; list-style: none; padding: 11px 14px; font-family: var(--f-display); font-weight: 600; font-size: 1.08rem; display: flex; justify-content: space-between; align-items: center; }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary::after { content: "+"; font-family: var(--f-mono); color: var(--muted); }
+details.grp[open] > summary::after { content: "−"; }
+.grp-body { padding: 0 14px 14px; display: grid; gap: 8px; }
+.f { display: grid; grid-template-columns: 1fr 96px; gap: 8px; align-items: center; font-size: .84rem; }
+.f label, .lbl { color: var(--muted); font-size: .84rem; }
+input[type=number], select { width: 100%; padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-2); font-family: var(--f-mono); font-size: .84rem; }
+.f3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: .84rem; color: var(--muted); }
+.pal-row { display: grid; grid-template-columns: 58px repeat(3, 1fr) 26px; gap: 6px; align-items: center; }
+.pal-row .tag { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); }
+.pal-row input { padding: 5px 3px; font-size: .8rem; }
+.pal-head { display: grid; grid-template-columns: 58px repeat(3, 1fr) 26px; gap: 6px; font-family: var(--f-mono); font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; width: 26px; height: 26px; cursor: pointer; line-height: 1; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 6px 11px; cursor: pointer; font-weight: 500; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.sm { padding: 3px 8px; font-size: .8rem; }
+.msg { font-size: .8rem; color: var(--bad); }
+.board-viz { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; background: var(--surface-2); border-radius: 4px; padding: 8px 10px; }
+.board-viz svg, .wall-mini svg { display: block; }
+.board-viz .cap { font-size: .76rem; color: var(--muted); line-height: 1.35; }
+.board-viz .cap b { color: var(--ink); font-weight: 600; }
+.sv-liner { fill: var(--kraft-1); stroke: var(--kraft-edge); stroke-width: .6; }
+.sv-flute { fill: none; stroke: var(--kraft-2); stroke-width: 1.4; }
+.sv-core { fill: var(--kraft-3); opacity: .35; }
+.wall-mini { display: inline-flex; align-items: center; gap: 8px; }
+.status { font-family: var(--f-mono); font-size: .74rem; color: var(--muted); }
+.calc-bar { position: sticky; bottom: 0; z-index: 2; display: grid; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--surface); }
+.calc-bar .btn { width: 100%; padding: 8px 11px; }
+.calc-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.calc-row .btn { width: auto; }
+.btn.confirm { border-color: var(--bad); color: var(--bad); }
+.calc-bar.dirty .status { color: var(--warn); }
+.main-col.stale .kpis, .main-col.stale .tbl-wrap, .main-col.stale .plans, .main-col.stale .checks { opacity: .5; transition: opacity .15s; }
+
+.main-col { display: grid; gap: 16px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.card > * { min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.eyebrow { font-family: var(--f-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 5px 11px; cursor: pointer; font-size: .84rem; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.kpis { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.kpi { background: var(--surface-2); border-radius: 4px; padding: 7px 9px; min-width: 0; }
+.kpi .k { font-family: var(--f-mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.kpi .v { font-family: var(--f-display); font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+.kpi .s { font-family: var(--f-mono); font-size: .7rem; color: var(--muted); }
+.kpi.good .v { color: var(--good); } .kpi.warn .v { color: var(--warn); } .kpi.bad .v { color: var(--bad); }
+.stage { position: relative; height: 470px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.stage canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.stage .hud { position: absolute; left: 10px; bottom: 8px; right: 10px; font-family: var(--f-mono); font-size: .72rem; color: var(--muted); pointer-events: none; }
+.stage .views { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
+.ctl-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; font-size: .84rem; }
+.slider { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.slider input { width: 120px; accent-color: var(--accent); }
+.switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-weight: 500; position: relative; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .track { width: 36px; height: 20px; border-radius: 10px; background: var(--line); position: relative; flex: none; transition: background .15s; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(16px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch.sw-sm { font-size: .84rem; font-weight: 400; color: var(--muted); align-items: flex-start; }
+.switch.sw-sm .track { margin-top: 1px; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; padding: 8px 12px; cursor: pointer; font-family: var(--f-display); font-weight: 600; font-size: 1.05rem; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: .84rem; }
+th, td { padding: 7px 9px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-family: var(--f-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); background: var(--surface-2); position: sticky; top: 0; z-index: 1; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody.click tr { cursor: pointer; }
+tbody.click tr:hover td { background: var(--surface-2); }
+tr.sel td, tbody.click tr.sel:hover td { background: var(--accent-soft); }
+.chip { font-family: var(--f-mono); font-size: .66rem; border-radius: 3px; padding: 1px 6px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); } .chip.info { color: var(--muted); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar select { width: auto; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.plan { display: grid; gap: 4px; min-width: 0; }
+.plan svg { width: 100%; height: auto; display: block; }
+.plan .cap { font-size: .8rem; color: var(--muted); } .plan .cap b { color: var(--ink); }
+svg text { font-family: var(--f-mono); }
+.sv-pal { fill: var(--surface-2); stroke: var(--muted); }
+.sv-k1 { fill: var(--kraft-1); } .sv-k2 { fill: var(--kraft-2); } .sv-k3 { fill: var(--kraft-3); }
+.sv-edge { stroke: var(--kraft-edge); }
+.sv-wood { fill: var(--wood); }
+.sv-t { fill: var(--ink); font-size: 11px; } .sv-m { fill: var(--muted); font-size: 10px; }
+/* labels printed on a carton: kraft looks the same in both themes, so the ink is fixed dark */
+.sv-on { fill: #24160A; font-weight: 600; }
+.sv-lim { stroke: var(--bad); stroke-dasharray: 5 4; stroke-width: 1.5; fill: none; }
+.checks { display: grid; gap: 14px; }
+.checks h3 { font-size: 1.05rem; }
+.check { display: grid; grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1.3fr); gap: 4px 14px; padding: 8px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.check:last-child { border-bottom: 0; }
+.check .what { font-weight: 600; } .check .val { font-family: var(--f-mono); font-size: .8rem; } .check .basis { color: var(--muted); font-size: .8rem; }
+textarea.csv { width: 100%; height: 110px; font-family: var(--f-mono); font-size: .72rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; }
+details.how { margin-top: 4px; }
+details.how summary { cursor: pointer; font-family: var(--f-display); font-weight: 600; font-size: 1.05rem; }
+details.how ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 5px; font-size: .86rem; color: var(--muted); max-width: 95ch; }
+
+
+/* ---------- interface layer ---------- */
+.brand-band { background: var(--band); color: var(--on-band); }
+.brand-band .wrap { padding-block: 24px 20px; display: flex; flex-wrap: wrap; gap: 8px 32px; align-items: flex-end; justify-content: space-between; }
+.brand-title { display: grid; gap: 4px; }
+.wordmark { font-family: var(--f-display); font-weight: 800; font-size: .92rem; letter-spacing: .16em; text-transform: uppercase; }
+.brand-band h1 { color: var(--on-band); font-size: clamp(2.1rem, 5vw, 3.2rem); font-weight: 800; line-height: .92; letter-spacing: 0; text-transform: uppercase; }
+.brand-band p { color: var(--on-band); opacity: .92; max-width: 48ch; font-size: .95rem; }
+.bench { padding-top: 18px; }
+.brand-foot { display: flex; justify-content: space-between; gap: 12px; padding-block: 4px 28px; color: var(--ink); font-family: var(--f-display); text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; }
+.brand-foot span:last-child { color: var(--muted); }
+h3 { text-transform: uppercase; letter-spacing: .02em; color: var(--head); font-weight: 700; }
+.eyebrow { color: var(--head); font-family: var(--f-display); font-weight: 600; font-size: .78rem; letter-spacing: .12em; }
+details.grp > summary, details.how summary { text-transform: uppercase; letter-spacing: .05em; color: var(--strong); font-weight: 700; }
+details.grp > summary::after { color: var(--accent); }
+.tabs button { text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.tabs button[aria-selected="true"] { color: var(--head); border-bottom-width: 3px; }
+form.inputs, .card { border-radius: 14px; border-color: var(--line); }
+.stage { border-radius: 10px; }
+.kpi { border-radius: 10px; }
+.kpi .k, th, .pal-head { font-family: var(--f-display); font-weight: 600; font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; }
+.kpi .v { color: var(--strong); font-weight: 800; }
+.btn, .icon-btn { border-radius: 999px; }
+.btn { font-family: var(--f-display); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 6px 14px; color: var(--strong); }
+.btn.sm { padding: 3px 11px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary:hover { color: var(--accent-ink); }
+.seg { border-radius: 999px; border-color: var(--line); }
+.seg button { font-family: var(--f-display); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 5px 14px; }
+input[type=number], select, textarea.csv { border-radius: 8px; }
+input[type=number]:focus, select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.chip { border-radius: 999px; font-family: var(--f-display); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: .7rem; padding: 1px 8px; }
+.board-viz { border-radius: 10px; }
+.calc-bar.dirty .status { color: var(--accent); }
+.calc-bar .btn { padding: 9px 14px; }
+@media (max-width: 1050px) {
+  .bench { grid-template-columns: 1fr; }
+  .main-col { order: -1; }
+  form.inputs { position: static; max-height: none; }
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stage { height: 360px; }
+  .check { grid-template-columns: 80px minmax(0, 1fr); }
+  .check .basis { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+<header class="brand-band">
+  <div class="wrap">
+    <div class="brand-title"><span class="wordmark">Packaging tools</span><h1>Master Carton Planner</h1></div>
+    <p>Design master cartons from one unit, stack them on your pallets, and check them against transit tests.</p>
+  </div>
+</header>
+<div class="wrap">
+
+  <main class="bench">
+    <form class="inputs" id="inputs" autocomplete="off" novalidate>
+      <details class="grp" open>
+        <summary>Product unit</summary>
+        <div class="grp-body">
+          <span class="lbl">Length × width × height (cm)</span>
+          <div class="f3"><input id="u_l" type="number" step="any" min="1" value="28" aria-label="Unit length cm"><input id="u_w" type="number" step="any" min="1" value="19" aria-label="Unit width cm"><input id="u_h" type="number" step="any" min="1" value="14" aria-label="Unit height cm"></div>
+          <div class="f"><label for="u_kg">Weight (kg)</label><input id="u_kg" type="number" step="any" min="0" value="1.1"></div>
+          <label class="switch sw-sm"><input type="checkbox" id="prod_up"><span class="track" aria-hidden="true"></span><span>Keep product upright (height stays vertical)</span></label>
+        </div>
+      </details>
+      <details class="grp" open>
+        <summary>Pallet options</summary>
+        <div class="grp-body">
+          <div class="pal-head"><span></span><span>L cm</span><span>W cm</span><span>Max H</span><span></span></div>
+          <div id="pal_list" style="display:grid;gap:6px"></div>
+          <button class="btn sm" type="button" id="pal_add">+ Add pallet option</button>
+          <label class="switch sw-sm"><input type="checkbox" id="inc_base" checked><span class="track" aria-hidden="true"></span><span>Max height includes the pallet</span></label>
+          <div class="f"><label for="base_h">Pallet height (cm)</label><input id="base_h" type="number" step="any" value="15"></div>
+          <div class="f"><label for="pal_tare">Pallet weight (kg)</label><input id="pal_tare" type="number" step="any" value="20"></div>
+          <div class="f"><label for="overhang">Overhang per side (cm)</label><input id="overhang" type="number" step="any" min="0" value="0"></div>
+          <div class="f"><label for="max_pal_kg">Max gross (kg, 0 = none)</label><input id="max_pal_kg" type="number" step="any" min="0" value="0"></div>
+        </div>
+      </details>
+      <details class="grp" open>
+        <summary>Master carton</summary>
+        <div class="grp-body">
+          <div class="f" style="grid-template-columns:70px 1fr"><label for="board">Board</label><select id="board"></select></div>
+          <div class="board-viz" id="board_viz" aria-live="polite"></div>
+          <div class="f"><label for="b_t">Wall thickness (mm)</label><input id="b_t" type="number" step="any" min="0.5" value="6"></div>
+          <div class="f"><label for="b_ect">ECT (kN/m)</label><input id="b_ect" type="number" step="any" min="0.5" value="7.7"></div>
+          <div class="f"><label for="b_gsm">Board weight (kg/m²)</label><input id="b_gsm" type="number" step="any" min="0" value="0.9"></div>
+          <div class="f"><label for="clear">Packing clearance (cm)</label><input id="clear" type="number" step="any" min="0" value="0.3"></div>
+          <div class="f"><label for="tol">Size tolerance check (cm)</label><input id="tol" type="number" step="any" min="0" value="0.4"></div>
+          <div class="f"><label for="min_u">Min units per carton</label><input id="min_u" type="number" step="any" min="1" value="2"></div>
+          <div class="f"><label for="max_u">Max units per carton</label><input id="max_u" type="number" step="any" min="1" value="40"></div>
+          <div class="f"><label for="max_ctn_kg">Max carton weight (kg)</label><input id="max_ctn_kg" type="number" step="any" value="20"></div>
+          <div class="f"><label for="max_side">Max carton side (cm)</label><input id="max_side" type="number" step="any" value="120"></div>
+          <label class="switch sw-sm"><input type="checkbox" id="upright" checked><span class="track" aria-hidden="true"></span><span>Keep cartons upright (flaps top and bottom)</span></label>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Stacking and transit</summary>
+        <div class="grp-body">
+          <div class="f"><label for="brick_min">Brick wall: min share bridging (%)</label><input id="brick_min" type="number" min="10" max="100" step="any" value="50"></div>
+          <div class="f"><label for="tie_ov">Bridging overlap (% of base)</label><input id="tie_ov" type="number" min="5" max="50" step="any" value="20"></div>
+          <div class="f"><label for="sf">Compression safety factor</label><input id="sf" type="number" min="1" step="any" value="4"></div>
+          <div class="f"><label for="ilk">Strength kept when interlocked (%)</label><input id="ilk" type="number" min="10" max="100" step="any" value="60"></div>
+          <div class="f"><label for="pstack">Pallets stacked</label><input id="pstack" type="number" min="1" max="3" step="any" value="1"></div>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Air freight</summary>
+        <div class="grp-body">
+          <div class="f"><label for="divisor">Volumetric divisor (cm³/kg)</label><input id="divisor" type="number" step="any" value="6000"></div>
+          <div class="f"><label for="rate">Rate per chargeable kg</label><input id="rate" type="number" step="any" min="0" value="0"></div>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Test your own carton</summary>
+        <div class="grp-body">
+          <span class="lbl">Inside length × width × height (cm)</span>
+          <div class="f3"><input id="c_l" type="number" step="any" value="57" aria-label="Inside length cm"><input id="c_w" type="number" step="any" value="20" aria-label="Inside width cm"><input id="c_h" type="number" step="any" value="43" aria-label="Inside height cm"></div>
+          <div class="f"><label for="c_flap">Flaps close on</label><select id="c_flap"><option value="2">Height</option><option value="0">Length</option><option value="1">Width</option></select></div>
+          <div class="f"><label for="c_n">Units inside</label><input id="c_n" type="number" step="any" min="1" value="6"></div>
+          <button class="btn" type="button" id="test_custom">Load this carton</button>
+          <p class="msg" id="custom_msg" hidden></p>
+        </div>
+      </details>
+      <div class="calc-bar" id="calc_bar"><div class="calc-row"><button class="btn primary" type="submit" id="calc">Calculate</button><button class="btn" type="button" id="reset_all">Reset</button></div><span class="status" id="run_status" aria-live="polite">Ready</span></div>
+    </form>
+
+    <div class="main-col">
+      <section class="card" aria-label="Viewer">
+        <div class="card-head">
+          <div style="display:grid;gap:2px;min-width:0"><span class="eyebrow" id="sel_label">Selected carton</span><h3 id="sel_title">Loading</h3></div>
+          <div class="toolbar">
+            <div class="seg" role="tablist" aria-label="Pallet option" id="pal_seg"></div>
+            <div class="seg" role="tablist" aria-label="View"><button type="button" role="tab" id="tab_pallet" aria-selected="true">Pallet</button><button type="button" role="tab" id="tab_carton" aria-selected="false">Carton</button></div>
+          </div>
+        </div>
+        <div class="kpis" id="kpis"></div>
+        <div class="stage" id="stage_pallet">
+          <canvas id="c3d" aria-label="3D view of the loaded pallet"></canvas>
+          <div class="views"><button class="btn sm" type="button" data-view="iso">3D</button><button class="btn sm" type="button" data-view="top">Top</button><button class="btn sm" type="button" data-view="front">Front</button><button class="btn sm" type="button" data-view="side">Side</button></div>
+          <div class="hud" id="hud"></div>
+        </div>
+        <div class="stage" id="stage_carton" hidden>
+          <canvas id="c3c" aria-label="3D view of one carton being packed"></canvas>
+          <div class="hud" id="hud_c"></div>
+        </div>
+        <div class="ctl-row" id="ctl_pallet">
+          <button class="btn primary" type="button" id="pplay">Play loading</button>
+          <label class="slider" for="pscrub">Step <input id="pscrub" type="range" min="0" max="1" step="0.002" value="1" style="width:160px"></label>
+          <label class="switch"><input type="checkbox" id="show_units"><span class="track" aria-hidden="true"></span><span>Show units inside each carton</span></label>
+          <label class="switch"><input type="checkbox" id="brick" checked><span class="track" aria-hidden="true"></span><span>Force brick wall (interlocking cartons)</span></label>
+          <label class="slider" for="explode">Separate layers <input id="explode" type="range" min="0" max="15" step="0.5" value="0"></label>
+          <label class="slider" for="spread">Separate cartons <input id="spread" type="range" min="0" max="0.6" step="0.02" value="0"></label>
+        </div>
+        <div class="ctl-row" id="ctl_carton" hidden>
+          <button class="btn primary" type="button" id="play">Play packing</button>
+          <label class="slider" for="scrub">Step <input id="scrub" type="range" min="0" max="1" step="0.005" value="1" style="width:200px"></label>
+          <label class="switch"><input type="checkbox" id="xray"><span class="track" aria-hidden="true"></span><span>See-through board</span></label>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Export">
+        <div class="card-head">
+          <div style="display:grid;gap:2px;min-width:0"><span class="eyebrow">Export</span><h3>PDF documents</h3></div>
+          <div class="toolbar">
+            <button class="btn primary" type="button" id="pdf_load" disabled>Loading instruction PDF</button>
+            <button class="btn" type="button" id="pdf_spec" disabled>Full specification PDF</button>
+          </div>
+        </div>
+        <p class="note" id="pdf_note">Loading instruction: step-by-step packing and pallet build for the warehouse team. Full specification: carton, pallet, strength, transit, freight and assumptions for quality, packaging, logistics and supply chain. Both use the carton and pallet option shown above.</p>
+      </section>
+
+      <section class="card" aria-label="Details">
+        <div class="tabs" role="tablist" aria-label="Details">
+          <button type="button" role="tab" data-btab="options" aria-selected="true">Carton options</button>
+          <button type="button" role="tab" data-btab="layers" aria-selected="false">Layer plans</button>
+          <button type="button" role="tab" data-btab="boards" aria-selected="false">Board choice</button>
+          <button type="button" role="tab" data-btab="checks" aria-selected="false">Transit checks</button>
+        </div>
+        <div data-bpane="options">
+          <div class="toolbar" style="margin-bottom:10px">
+            <label for="sort_by" class="note">Rank by</label>
+            <select id="sort_by">
+              <option value="units">Most units on the shown pallet</option>
+              <option value="floor">Best floor use</option>
+              <option value="few">Fewest cartons</option>
+              <option value="comp">Strongest compression margin</option>
+              <option value="tie">Strongest interlock</option>
+            </select>
+            <button class="btn sm" type="button" id="copy_csv">Copy as CSV</button>
+            <span class="note" id="opt_note"></span>
+          </div>
+          <div class="tbl-wrap" style="max-height:440px;overflow-y:auto"><table><thead id="res_head"></thead><tbody class="click" id="res_body"></tbody></table></div>
+          <textarea class="csv" id="csv_out" hidden readonly aria-label="CSV export"></textarea>
+        </div>
+        <div data-bpane="layers" hidden><div class="plans" id="plans"></div></div>
+        <div data-bpane="boards" hidden>
+          <p class="note" style="margin-bottom:10px" id="board_note"></p>
+          <div class="tbl-wrap"><table id="board_table"></table></div>
+        </div>
+        <div data-bpane="checks" hidden><div class="checks" id="checks"></div></div>
+        <details class="how">
+          <summary>How the numbers are made</summary>
+          <ul>
+            <li><b>Cartons</b> are regular slotted cartons (RSC, FEFCO-ESBO code 0201) built around a block of units plus packing clearance. Side walls add 2 board thicknesses per dimension. The flap direction adds 4, because the flaps overlap 2 deep at the top and at the bottom. Every flap direction is tried.</li>
+            <li><b>Board thickness</b> defaults sit at or above the nominal flute thickness published by the Fibre Box Association (F 0.8, E 1.6, B 3.2, C 4.0 mm) and the top of the DIN 55468 flute height ranges used in Europe, so cartons are never drawn undersized. Double and triple wall add each flute plus a liner. Ask your supplier for the measured thickness (ISO 3034) and edge crush (ISO 3037 or TAPPI T 811). ECT and board weight here are typical values.</li>
+            <li><b>Layers</b> come from guillotine and 5-block pinwheel patterns. With brick wall on, every layer must bridge the joints below by the share you set, and every carton needs 75% of its base supported.</li>
+            <li><b>Compression</b> uses the McKee short formula, BCT = 5.87 × ECT × √(thickness × perimeter), an industry estimate to be confirmed by a box compression test (ISO 12048 or ASTM D642). It is reduced when layers interlock and when a carton lies on its side. Required strength is the load above the carton times the safety factor.</li>
+            <li><b>Transit checks</b> are theoretical. They map to ISTA 1A, 2A (single cartons up to 68 kg) and 1E, 3E (unit loads). Drop heights and test loads come from the full ISTA procedures, which are not public, so lab testing is still needed.</li>
+          </ul>
+        </details>
+      </section>
+    </div>
+  </main>
+  <footer class="brand-foot"><span class="wordmark">Master Carton Planner</span><span>Packaging tools</span></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script id="engine_src">
+/*ENGINE*/
+</script>
+<script>
+(function () {
+  'use strict';
+  const E = window.PalEngine;
+  const $ = (s) => document.querySelector(s);
+  const fmt = (v, d = 0) => (v == null || !isFinite(v) ? 'n/a' : Number(v).toFixed(d));
+  const f1 = (v) => fmt(v, 1).replace(/\.0$/, '');
+  const pct = (v) => (v * 100).toFixed(1) + '%';
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const AX = ['length', 'width', 'height'];
+
+  // Board presets: thickness at or above the Fibre Box Association nominal flute thickness (US) and the top of the DIN 55468 flute height ranges (Europe);
+  // double and triple wall add their flutes plus one liner per flute. ECT and board weight are typical estimates.
+  const BOARDS = [
+    { id: 'F', name: 'Single wall F', t: 1.2, ect: 3.5, gsm: 0.45, flutes: 'F' },
+    { id: 'E', name: 'Single wall E', t: 2.0, ect: 4.4, gsm: 0.5, flutes: 'E' },
+    { id: 'B', name: 'Single wall B', t: 3.2, ect: 5.6, gsm: 0.55, flutes: 'B' },
+    { id: 'C', name: 'Single wall C', t: 4.2, ect: 5.6, gsm: 0.6, flutes: 'C' },
+    { id: 'EB', name: 'Double wall E/B', t: 4.5, ect: 7.0, gsm: 0.85, flutes: 'EB' },
+    { id: 'DW6', name: 'Double wall 6 mm', t: 6.0, ect: 7.7, gsm: 0.9, flutes: 'EC' }, // default board
+    { id: 'EC', name: 'Double wall E/C', t: 6.5, ect: 7.7, gsm: 0.9, flutes: 'EC' },
+    { id: 'BC', name: 'Double wall B/C', t: 7.6, ect: 8.4, gsm: 0.95, flutes: 'BC' },
+    { id: 'BCB', name: 'Triple wall B/C/B', t: 11.0, ect: 15.8, gsm: 1.5, flutes: 'BCB' },
+  ];
+  const DEFAULT_BOARD = 'DW6';
+  // Cross-section of the board wall: liners with a fluted medium between each pair, drawn to a common mm scale.
+  // Flute pitch from the Fibre Box Association flutes per foot (F 125, E 90, B 47, C 39); height is the flute's share of the board thickness.
+  const FLUTE = { F: { pitch: 2.4, h: 0.8 }, E: { pitch: 3.4, h: 1.2 }, B: { pitch: 6.5, h: 2.5 }, C: { pitch: 7.8, h: 3.6 } };
+  function boardSVG(b, pxPerMm, lenMm) {
+    const liner = 0.28, fl = b.flutes.split('').map((k) => FLUTE[k]);
+    const raw = fl.reduce((s, f) => s + f.h, 0) + liner * (fl.length + 1), k = b.t / raw; // stretch to the board's stated thickness
+    const W = lenMm * pxPerMm, H = b.t * pxPerMm, pad = 1;
+    let y = 0, s = `<svg width="${W + 2 * pad}" height="${H + 2 * pad}" viewBox="${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}" role="img" aria-label="${b.name} wall cross-section, ${b.t} mm">`;
+    const linerAt = (yy) => { s += `<rect class="sv-liner" x="0" y="${yy}" width="${W}" height="${Math.max(1, liner * k * pxPerMm)}"/>`; };
+    linerAt(0); y += liner * k * pxPerMm;
+    for (const f of fl) {
+      const fh = f.h * k * pxPerMm, p = f.pitch * pxPerMm;
+      s += `<rect class="sv-core" x="0" y="${y}" width="${W}" height="${fh}"/>`;
+      let d = `M0 ${y + fh}`;
+      for (let x = 0; x < W; x += p) d += ` C${x + p * 0.25} ${y + fh} ${x + p * 0.25} ${y} ${x + p * 0.5} ${y} S${x + p * 0.75} ${y + fh} ${x + p} ${y + fh}`;
+      s += `<path class="sv-flute" d="${d}"/>`;
+      y += fh; linerAt(y); y += liner * k * pxPerMm;
+    }
+    return s + '</svg>';
+  }
+  function renderBoardViz() {
+    const b = BOARDS.find((x) => x.id === $('#board').value) || BOARDS.find((x) => x.id === DEFAULT_BOARD), t = num('b_t', b.t);
+    const walls = b.flutes.length, liners = walls + 1;
+    $('#board_viz').innerHTML = boardSVG(Object.assign({}, b, { t }), 6, 15) +
+      `<div class="cap"><b>${b.name}, ${f1(t)} mm</b><br>${liners} liners, ${walls} fluted layer${walls > 1 ? 's' : ''}<br>adds ${f1((2 * t) / 10)} cm to length and width, ${f1((4 * t) / 10)} cm on the flap side</div>`;
+  }
+  $('#board').innerHTML = BOARDS.map((b) => `<option value="${b.id}"${b.id === DEFAULT_BOARD ? ' selected' : ''}>${b.name}</option>`).join('');
+
+  // ---------- pallet options ----------
+  const MAX_PAL = 4;
+  let pallets = [{ L: 120, W: 80, H: 150 }];
+  function renderPalList() {
+    $('#pal_list').innerHTML = pallets.map((p, i) => `<div class="pal-row"><span class="tag">Option ${i + 1}</span>
+      <input type="number" step="any" min="20" value="${p.L}" data-pi="${i}" data-pk="L" aria-label="Option ${i + 1} length cm">
+      <input type="number" step="any" min="20" value="${p.W}" data-pi="${i}" data-pk="W" aria-label="Option ${i + 1} width cm">
+      <input type="number" step="any" min="20" value="${p.H}" data-pi="${i}" data-pk="H" aria-label="Option ${i + 1} max height cm">
+      ${pallets.length > 1 ? `<button class="icon-btn" type="button" data-prm="${i}" aria-label="Remove option ${i + 1}">×</button>` : '<span></span>'}</div>`).join('');
+    $('#pal_add').disabled = pallets.length >= MAX_PAL;
+    $('#pal_add').textContent = pallets.length >= MAX_PAL ? `Up to ${MAX_PAL} pallet options` : '+ Add pallet option';
+  }
+
+  const num = (id, d) => { const v = parseFloat($('#' + id).value); return isFinite(v) ? v : d; };
+  function readParams() {
+    return {
+      unit: [num('u_l', 28), num('u_w', 19), num('u_h', 14)], unitKg: num('u_kg', 1.1),
+      pallets: pallets.map((p) => ({ L: p.L, W: p.W, H: p.H })),
+      heightIncludesBase: $('#inc_base').checked, baseH: num('base_h', 15), palletTare: num('pal_tare', 20),
+      overhang: Math.max(0, num('overhang', 0)), maxPalletKg: Math.max(0, num('max_pal_kg', 0)),
+      board: { t: Math.max(0.5, num('b_t', 6)), ect: Math.max(0.5, num('b_ect', 7.7)), gsm: Math.max(0, num('b_gsm', 0.9)) },
+      boardName: $('#board').selectedOptions[0] ? $('#board').selectedOptions[0].textContent : 'Custom',
+      clearance: Math.max(0, num('clear', 0.3)), tolerance: Math.max(0, num('tol', 0.4)),
+      minUnits: Math.max(1, Math.round(num('min_u', 2))), maxUnits: Math.max(1, Math.round(num('max_u', 40))),
+      maxCartonKg: num('max_ctn_kg', 20), maxSide: num('max_side', 120), upright: $('#upright').checked, productUp: $('#prod_up').checked, flapMode: 'auto',
+      brick: $('#brick').checked, brickMin: Math.min(1, Math.max(0.1, num('brick_min', 50) / 100)), tieOverlap: Math.min(0.5, Math.max(0.05, num('tie_ov', 20) / 100)),
+      sf: Math.max(1, num('sf', 4)), interlockKeep: Math.min(1, Math.max(0.1, num('ilk', 60) / 100)), sideFactor: 0.5, palletStack: Math.max(1, Math.min(3, Math.round(num('pstack', 1)))),
+      divisor: Math.max(1, num('divisor', 6000)), rate: Math.max(0, num('rate', 0)), maxPerAxis: 8, fullTop: 60,
+    };
+  }
+
+  // ---------- shared SVG builders ----------
+  const TYPE_CLASS = ['sv-k1', 'sv-k3', 'sv-k2'];
+  const typeKeys = (sc) => { const ks = []; sc.layers.forEach((l) => { const k = l.h + ':' + l.axis; if (!ks.includes(k)) ks.push(k); }); return ks; };
+  function layerSVG(prm, pal, ly, cls) {
+    const off = E.mm(prm.overhang), L = pal.L * 10, W = pal.W * 10, pad = 80;
+    let s = `<svg viewBox="${-pad} ${-pad} ${L + 2 * pad} ${W + 2 * pad + 60}" role="img" aria-label="Layer plan, ${ly.rects.length} cartons">`;
+    s += `<rect class="sv-pal" x="0" y="0" width="${L}" height="${W}" stroke-width="3"/>`;
+    for (const q of ly.rects) {
+      const r = { x: q.x - off, y: q.y - off, w: q.w, l: q.l };
+      s += `<rect class="${cls} sv-edge" x="${r.x}" y="${W - r.y - r.l}" width="${r.w}" height="${r.l}" stroke-width="3"/>`;
+      if (r.w > 140 && r.l > 90) {
+        const txt = `${f1(r.w / 10)}×${f1(r.l / 10)}`, fs = Math.min(42, (r.w * 0.82) / (txt.length * 0.6)); // shrink to fit inside the carton
+        s += `<text class="sv-on" x="${r.x + r.w / 2}" y="${W - r.y - r.l / 2 + fs * 0.35}" text-anchor="middle" style="font-size:${fs.toFixed(1)}px">${txt}</text>`;
+      }
+    }
+    s += `<text class="sv-m" x="${L / 2}" y="-20" text-anchor="middle" style="font-size:46px">${pal.L} cm</text>`;
+    s += `<text class="sv-m" x="-24" y="${W / 2}" text-anchor="middle" style="font-size:46px" transform="rotate(-90 -24 ${W / 2})">${pal.W} cm</text>`;
+    s += `<text class="sv-t" x="0" y="${W + 75}" style="font-size:50px">${ly.rects.length} cartons</text>`;
+    return s + '</svg>';
+  }
+  function elevationSVG(prm, sc) {
+    const Wd = 320, Hpx = 270, base = prm.baseH, inc = prm.heightIncludesBase;
+    const total = Math.max(sc.usable, sc.builtCm) + base, k = (Hpx - 30) / total, x0 = 46, bw = Wd - x0 - 96, yb = Hpx - 10;
+    let s = `<svg viewBox="0 0 ${Wd} ${Hpx}" role="img" aria-label="Side view">`;
+    s += `<rect class="sv-wood" x="${x0}" y="${yb - base * k}" width="${bw}" height="${base * k}"/>`;
+    const ks = typeKeys(sc);
+    let z = 0;
+    sc.layers.forEach((ly) => {
+      const h = ly.h / 10, y = yb - (base + z + h) * k;
+      s += `<rect class="${TYPE_CLASS[ks.indexOf(ly.h + ':' + ly.axis) % 3]} sv-edge" x="${x0}" y="${y}" width="${bw}" height="${h * k}"/>`;
+      if (h * k > 11) s += `<text class="sv-t sv-on" x="${x0 + 6}" y="${y + (h * k) / 2 + 4}">${f1(h)} cm · ${ly.cnt}</text>`;
+      z += h;
+    });
+    const yl = yb - (base + sc.usable) * k;
+    s += `<line class="sv-lim" x1="${x0 - 8}" x2="${x0 + bw + 8}" y1="${yl}" y2="${yl}"/>`;
+    s += `<text class="sv-m" x="${x0 + bw + 10}" y="${yl + 4}">${f1(inc ? sc.pal.H : sc.usable)} max</text>`;
+    const yt = yb - (base + sc.builtCm) * k;
+    s += `<text class="sv-t" x="${x0 + bw + 10}" y="${Math.max(yt + 16, yl + 18)}">${f1(sc.builtCm + (inc ? base : 0))} ${inc ? 'total' : 'built'}</text>`;
+    s += `<text class="sv-m" x="${x0 - 6}" y="${yb - (base * k) / 2 + 4}" text-anchor="end">pallet</text>`;
+    return s + '</svg>';
+  }
+
+  // ---------- 3D helpers shared by both stages ----------
+  function makeStage(canvas) {
+    let renderer = null;
+    try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); } catch (e) { renderer = null; }
+    const st = { renderer, ok: !!renderer, theta: -0.75, phi: 1.0, radius: 330, target: new THREE.Vector3(0, 60, 0), onDraw: null };
+    if (!renderer) return st;
+    st.scene = new THREE.Scene();
+    st.camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
+    st.scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 0.85));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.55); dl.position.set(120, 260, 180); st.scene.add(dl);
+    st.group = new THREE.Group(); st.scene.add(st.group);
+    st.draw = () => {
+      const r = canvas.parentElement.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      renderer.setSize(r.width, r.height, false);
+      st.camera.aspect = r.width / r.height; st.camera.updateProjectionMatrix();
+      st.camera.position.set(st.target.x + st.radius * Math.sin(st.phi) * Math.sin(st.theta), st.target.y + st.radius * Math.cos(st.phi), st.target.z + st.radius * Math.sin(st.phi) * Math.cos(st.theta));
+      st.camera.lookAt(st.target);
+      renderer.render(st.scene, st.camera);
+    };
+    // render the current scene at a fixed size on white and return a JPEG, for the PDF exports
+    st.snap = (w, h) => {
+      renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+      st.camera.aspect = w / h; st.camera.updateProjectionMatrix();
+      st.camera.position.set(st.target.x + st.radius * Math.sin(st.phi) * Math.sin(st.theta), st.target.y + st.radius * Math.cos(st.phi), st.target.z + st.radius * Math.sin(st.phi) * Math.cos(st.theta));
+      st.camera.lookAt(st.target);
+      renderer.setClearColor(0xffffff, 1); renderer.render(st.scene, st.camera);
+      const url = canvas.toDataURL('image/jpeg', 0.9);
+      renderer.setClearColor(0x000000, 0); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      return url;
+    };
+    st.clear = () => {
+      while (st.group.children.length) {
+        const o = st.group.children.pop();
+        o.traverse((n) => { if (n.geometry) n.geometry.dispose(); const m = n.material; if (m && !Array.isArray(m) && !m.userData.shared) { if (m.map) m.map.dispose(); m.dispose(); } });
+      }
+    };
+    let drag = null;
+    canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = 'grabbing'; });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      st.theta -= (e.clientX - drag.x) * 0.008;
+      st.phi = Math.min(Math.PI / 2 - 0.001, Math.max(0.001, st.phi - (e.clientY - drag.y) * 0.008));
+      drag = { x: e.clientX, y: e.clientY }; st.draw();
+    });
+    const end = () => { drag = null; canvas.style.cursor = 'grab'; };
+    canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('wheel', (e) => { e.preventDefault(); st.radius = Math.min(2000, Math.max(20, st.radius * (1 + Math.sign(e.deltaY) * 0.08))); st.draw(); }, { passive: false });
+    return st;
+  }
+  const col = (n, d) => new THREE.Color(css(n) || d || '#c48c4e');
+  function boxMesh(group, w, h, l, x, y, z, color, o = {}) {
+    const g = new THREE.BoxGeometry(w, h, l);
+    const m = new THREE.MeshLambertMaterial({ color, transparent: !!o.alpha, opacity: o.alpha || 1, depthWrite: !o.alpha });
+    const mesh = new THREE.Mesh(g, m); mesh.position.set(x, y, z); group.add(mesh);
+    if (o.edge) { const ls = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: o.edge, transparent: true, opacity: 0.8 })); ls.position.copy(mesh.position); group.add(ls); }
+    return mesh;
+  }
+  // plain unit faces, shaded per side so the faces read apart
+  const texCache = new Map();
+  function faceMat(w, h, shade) {
+    const key = w.toFixed(1) + 'x' + h.toFixed(1) + ':' + shade;
+    let m = texCache.get(key);
+    if (m) return m;
+    const long = 256, cw = w >= h ? long : Math.max(16, Math.round((long * w) / h)), ch = h >= w ? long : Math.max(16, Math.round((long * h) / w));
+    const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#' + new THREE.Color(css('--unit') || '#4F7CAC').multiplyScalar(shade).getHexString();
+    g.fillRect(0, 0, cw, ch);
+    const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+    m = new THREE.MeshBasicMaterial({ map: tex }); m.userData.shared = true;
+    texCache.set(key, m);
+    return m;
+  }
+  function unitMesh(group, w, h, l) {
+    const g = new THREE.BoxGeometry(w, h, l);
+    const mesh = new THREE.Mesh(g, [faceMat(l, h, 0.86), faceMat(l, h, 0.86), faceMat(w, l, 1), faceMat(w, l, 0.6), faceMat(w, h, 0.76), faceMat(w, h, 0.76)]);
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col('--unit-edge') })));
+    group.add(mesh);
+    return mesh;
+  }
+  // unit centres inside a carton, in carton local cm with the origin at the outer min corner; bottom layer first
+  function unitSlots(c, prm) {
+    if (!c.arr) return [];
+    const w = E.walls(prm, c.flap), out = [];
+    const block = c.block || c.arr.map((v, i) => v * c.ori[i]);
+    const off = [0, 1, 2].map((i) => w[i] / 2 + (c.inner[i] - block[i]) / 2);
+    const f = c.flap, o = [0, 1, 2].filter((i) => i !== f);
+    for (let a = 0; a < c.arr[f]; a++) for (let b = 0; b < c.arr[o[1]]; b++) for (let d = 0; d < c.arr[o[0]]; d++) {
+      const idx = []; idx[f] = a; idx[o[1]] = b; idx[o[0]] = d;
+      out.push([0, 1, 2].map((i) => off[i] + (idx[i] + 0.5) * c.ori[i]));
+    }
+    return out.slice(0, c.n);
+  }
+
+  // ---------- pallet stage ----------
+  const PV = (function () {
+    const st = makeStage($('#c3d'));
+    function build(prm, c, sc, o) {
+      if (!st.ok) return;
+      st.clear();
+      const g = st.group, L = sc.pal.L, W = sc.pal.W, B = prm.baseH;
+      const wood = col('--wood'), we = col('--kraft-edge');
+      const deck = 2.2, blockH = Math.max(1, B - 2 * deck), bw = Math.min(10, W / 8);
+      for (let i = 0; i < 5; i++) boxMesh(g, L, deck, bw, 0, B - deck / 2, -W / 2 + bw / 2 + (i * (W - bw)) / 4, wood, { edge: we });
+      for (const xi of [-1, 0, 1]) for (const zi of [-1, 0, 1]) boxMesh(g, 14.5, blockH, bw, xi * (L / 2 - 7.25), deck + blockH / 2, zi * (W / 2 - bw / 2), wood, { edge: we });
+      for (const zi of [-1, 0, 1]) boxMesh(g, L, deck, bw, 0, deck / 2, zi * (W / 2 - bw / 2), wood, { edge: we });
+      // loading order: layer by layer, each layer from the far side to the near side
+      const boxes = E.placements(prm, sc).sort((p, q) => p.layer - q.layer || q.y - p.y || p.x - q.x), ks = typeKeys(sc);
+      loads = [];
+      const kraft = ['--kraft-1', '--kraft-3', '--kraft-2'].map((n) => col(n)), edge = col('--kraft-edge');
+      const dimsMM = c.outer.map(E.mm), slots = o.units ? unitSlots(c, prm) : [];
+      for (const b of boxes) {
+        const w = b.w / 10, l = b.l / 10, h = b.h / 10;
+        let x = -L / 2 + b.x / 10 + w / 2, z = W / 2 - (b.y / 10 + l / 2);
+        x += x * o.spread; z += z * o.spread;
+        const y = B + b.z / 10 + h / 2 + b.layer * o.explode;
+        const kc = kraft[ks.indexOf(b.h + ':' + b.axis) % 3];
+        const bg = new THREE.Group(); bg.position.set(x, y, z); g.add(bg);
+        if (slots.length) {
+          boxMesh(bg, w, h, l, 0, 0, 0, kc, { alpha: 0.28, edge }); // same see-through level as the carton view
+          const others = [0, 1, 2].filter((i) => i !== b.axis);
+          let ix = others.find((i) => dimsMM[i] === b.w); if (ix == null) ix = others[0];
+          const iz = others.find((i) => i !== ix), iy = b.axis;
+          for (const s of slots) {
+            const m = unitMesh(bg, c.ori[ix] - 0.4, c.ori[iy] - 0.4, c.ori[iz] - 0.4);
+            m.position.set(-w / 2 + s[ix], -h / 2 + s[iy], l / 2 - s[iz]);
+          }
+        } else boxMesh(bg, w - 0.15, h - 0.15, l - 0.15, 0, 0, 0, kc, { edge });
+        loads.push({ grp: bg, y, layer: b.layer });
+      }
+      const H = sc.usable, env = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(L, H, W)), new THREE.LineDashedMaterial({ color: col('--bad'), dashSize: 3, gapSize: 2.5 }));
+      env.computeLineDistances(); env.position.set(0, B + H / 2, 0); g.add(env);
+      st.target.set(0, (B + H) / 2, 0);
+      if (!st.fitted || st.fitted !== L + 'x' + W + 'x' + H) { st.radius = Math.max(L, W, H + B) * 2.35; st.fitted = L + 'x' + W + 'x' + H; }
+      pose(u);
+    }
+    // loading animation: cartons drop onto the pallet one after another
+    let loads = [], u = 1, raf = 0;
+    const out3 = (p) => 1 - Math.pow(1 - p, 3);
+    function pose(v) {
+      u = v;
+      const n = loads.length, d = n > 1 ? Math.min(0.12, 4 / n) : 0.5;
+      loads.forEach((ld, k) => {
+        const s0 = n > 1 ? ((1 - d) * k) / (n - 1) : 0, p = Math.max(0, Math.min(1, (v - s0) / d));
+        ld.grp.visible = p > 0;
+        ld.grp.position.y = ld.y + (1 - out3(p)) * 45;
+      });
+      $('#pscrub').value = v;
+      st.draw();
+    }
+    function play() {
+      cancelAnimationFrame(raf);
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { pose(1); return; }
+      const from = u >= 0.999 ? 0 : u, dur = Math.min(14000, 2500 + loads.length * 220) * (1 - from), t0 = performance.now();
+      const step = (now) => { const p = Math.min(1, (now - t0) / dur); pose(from + (1 - from) * p); if (p < 1) raf = requestAnimationFrame(step); else $('#pplay').textContent = 'Replay loading'; };
+      $('#pplay').textContent = 'Loading';
+      raf = requestAnimationFrame(step);
+    }
+    function stop() { cancelAnimationFrame(raf); $('#pplay').textContent = 'Play loading'; }
+    function view(v) {
+      if (v === 'top') { st.theta = 0; st.phi = 0.001; } else if (v === 'front') { st.theta = 0; st.phi = Math.PI / 2; }
+      else if (v === 'side') { st.theta = Math.PI / 2; st.phi = Math.PI / 2; } else { st.theta = -0.75; st.phi = 1.0; }
+      st.draw();
+    }
+    window.addEventListener('resize', () => st.ok && st.draw());
+    // show only the first k layers, at rest (for the step images in the loading instruction)
+    function showLayers(k) { loads.forEach((ld) => { ld.grp.visible = ld.layer < k; ld.grp.position.y = ld.y; }); }
+    return { build, view, st, pose, play, stop, showLayers };
+  })();
+
+  // ---------- carton stage: one carton, flaps, packing animation ----------
+  const CV = (function () {
+    const st = makeStage($('#c3c'));
+    let parts = null, u = 1, raf = 0;
+    const clamp = (v) => Math.max(0, Math.min(1, v));
+    const ease = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+    const out3 = (p) => 1 - Math.pow(1 - p, 3);
+    const OPEN = (20 * Math.PI) / 180, SHUT = Math.PI / 2; // open = tilted 20° outward, shut = flat over the opening
+    function build(prm, c, xray) {
+      if (!st.ok) return;
+      st.clear();
+      const g = st.group, t = prm.board.t / 10, f = c.flap;
+      const hz = [0, 1, 2].filter((i) => i !== f).sort((a, b) => c.outer[b] - c.outer[a]); // [long, short]
+      const Lo = c.outer[hz[0]], Wo = c.outer[hz[1]], Ho = c.outer[f];
+      const kraft = col('--kraft-1'), kraft2 = col('--kraft-3'), edge = col('--kraft-edge');
+      const op = xray ? { alpha: typeof xray === 'number' ? xray : 0.28, edge } : { edge }; // a number sets the board opacity (PDF images)
+      // bottom flaps (closed) and walls
+      boxMesh(g, Lo, 2 * t, Wo, 0, t, 0, kraft2, op);
+      for (const s of [-1, 1]) boxMesh(g, Lo, Ho - t - 2 * t, t, 0, 2 * t + (Ho - 3 * t) / 2, s * (Wo / 2 - t / 2), kraft, op);
+      for (const s of [-1, 1]) boxMesh(g, t, Ho - 4 * t, Wo - 2 * t, s * (Lo / 2 - t / 2), 2 * t + (Ho - 4 * t) / 2, 0, kraft, op);
+      // flaps on hinges: major on the long walls (top layer), minor on the end walls (underneath)
+      const flaps = [];
+      for (const s of [-1, 1]) {
+        const piv = new THREE.Group(); piv.position.set(0, Ho - t / 2, s * (Wo / 2 - t / 2)); g.add(piv);
+        const m = boxMesh(piv, Lo, Wo / 2, t, 0, Wo / 4, 0, kraft2, op); m.userData.flap = true;
+        flaps.push({ piv, kind: 'major', axis: 'x', s });
+      }
+      for (const s of [-1, 1]) {
+        const piv = new THREE.Group(); piv.position.set(s * (Lo / 2 - t / 2), Ho - 1.5 * t, 0); g.add(piv);
+        boxMesh(piv, t, Wo / 2, Wo - 2 * t, 0, Wo / 4, 0, kraft, op);
+        flaps.push({ piv, kind: 'minor', axis: 'z', s });
+      }
+      const tape = boxMesh(g, Lo * 0.98, 0.12, Math.min(5, Wo * 0.3), 0, Ho + 0.06, 0, col('--kraft-edge'));
+      // units: carton local -> stage axes (x = long side, y = flap axis, z = short side)
+      const slots = unitSlots(c, prm), units = [];
+      for (const s of slots) {
+        const m = unitMesh(g, c.ori[hz[0]] - 0.3, c.ori[f] - 0.3, c.ori[hz[1]] - 0.3);
+        const tx = -Lo / 2 + s[hz[0]], ty = s[f], tz = -Wo / 2 + s[hz[1]];
+        m.userData.target = [tx, ty, tz];
+        units.push(m);
+      }
+      // dimension lines on the unit nearest the viewer in the top layer, shown once it has landed
+      let dimUnit = -1;
+      if (units.length) {
+        const topY = Math.max(...units.map((m) => m.userData.target[1]));
+        units.forEach((m, k) => { const tg = m.userData.target; if (Math.abs(tg[1] - topY) < 0.01 && (dimUnit < 0 || tg[0] - tg[2] < units[dimUnit].userData.target[0] - units[dimUnit].userData.target[2])) dimUnit = k; });
+        units[dimUnit].add(unitDims(c.ori[hz[0]], c.ori[f], c.ori[hz[1]], Math.max(Lo, Wo, Ho)));
+      }
+      parts = { flaps, units, tape, Ho, drop: Ho * 0.9 + 10, dimUnit };
+      st.target.set(0, Ho / 2, 0);
+      if (st.fitted !== c.outer.join('x')) { st.radius = Math.max(Lo, Wo, Ho) * 3.0; st.theta = -0.6; st.phi = 0.62; st.fitted = c.outer.join('x'); }
+      pose(u);
+    }
+    // a text tag that always faces the camera and draws on top
+    function label(text, h) {
+      const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 44;
+      g.font = `600 ${fs}px "IBM Plex Mono", monospace`;
+      const w = Math.ceil(g.measureText(text).width) + 28;
+      cv.width = w; cv.height = fs + 22;
+      g.font = `600 ${fs}px "IBM Plex Mono", monospace`;
+      g.fillStyle = 'rgba(255,255,255,0.92)'; g.strokeStyle = 'rgba(20,32,43,0.55)'; g.lineWidth = 3;
+      g.beginPath(); g.roundRect ? g.roundRect(2, 2, w - 4, cv.height - 4, 10) : g.rect(2, 2, w - 4, cv.height - 4); g.fill(); g.stroke();
+      g.fillStyle = '#14202b'; g.textBaseline = 'middle'; g.fillText(text, 14, cv.height / 2 + 2);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true }));
+      sp.scale.set((h * w) / cv.height, h, 1); sp.renderOrder = 20;
+      return sp;
+    }
+    // dimension lines along the three edges of one unit (x = long side of the carton, y = up, z = short side)
+    function unitDims(ux, uy, uz, size) {
+      const grp = new THREE.Group(); grp.userData.dims = true; grp.visible = false;
+      const hx = ux / 2, hy = uy / 2, hz = uz / 2, o = size * 0.03, tk = size * 0.012, lh = size * 0.07;
+      const pts = [];
+      const seg = (a, b) => pts.push(new THREE.Vector3(...a), new THREE.Vector3(...b));
+      // length along x on the top front edge
+      seg([-hx, hy, hz + o], [hx, hy, hz + o]); seg([-hx, hy, hz + o - tk], [-hx, hy, hz + o + tk]); seg([hx, hy, hz + o - tk], [hx, hy, hz + o + tk]);
+      // width along z on the top left edge
+      seg([-hx - o, hy, -hz], [-hx - o, hy, hz]); seg([-hx - o - tk, hy, -hz], [-hx - o + tk, hy, -hz]); seg([-hx - o - tk, hy, hz], [-hx - o + tk, hy, hz]);
+      // height along y on the front left corner
+      seg([-hx - o, -hy, hz + o], [-hx - o, hy, hz + o]); seg([-hx - o - tk, -hy, hz + o], [-hx - o + tk, -hy, hz + o]); seg([-hx - o - tk, hy, hz + o], [-hx - o + tk, hy, hz + o]);
+      const ln = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x14202b, depthTest: false, transparent: true, opacity: 0.9 }));
+      ln.renderOrder = 19; grp.add(ln);
+      const a = label(`${f1(ux)} cm`, lh); a.position.set(0, hy + lh * 0.9, hz + o); grp.add(a);
+      const b = label(`${f1(uz)} cm`, lh); b.position.set(-hx - o, hy + lh * 0.9, 0); grp.add(b);
+      const c = label(`${f1(uy)} cm`, lh); c.position.set(-hx - o * 2.2, 0, hz + o * 2.2); grp.add(c);
+      return grp;
+    }
+    function pose(v) {
+      u = v;
+      if (!parts) return;
+      const n = parts.units.length, d = n > 1 ? Math.min(0.22, (0.57 * 3) / n) : 0.3;
+      parts.units.forEach((m, k) => {
+        const s0 = 0.05 + (n > 1 ? ((0.57 - d) * k) / (n - 1) : 0);
+        const p = clamp((v - s0) / d), tg = m.userData.target;
+        m.visible = p > 0;
+        m.position.set(tg[0], tg[1] + (1 - out3(p)) * parts.drop, tg[2]);
+        if (k === parts.dimUnit) m.children.forEach((ch) => { if (ch.userData.dims) ch.visible = p >= 1; });
+      });
+      const minor = ease(clamp((v - 0.66) / 0.12)), major = ease(clamp((v - 0.8) / 0.13));
+      for (const fl of parts.flaps) {
+        const e = fl.kind === 'major' ? major : minor, a = -OPEN + (SHUT + OPEN) * e;
+        if (fl.axis === 'x') fl.piv.rotation.x = -fl.s * a;
+        else fl.piv.rotation.z = fl.s * a;
+      }
+      parts.tape.visible = v >= 0.96;
+      $('#scrub').value = v;
+      st.draw();
+    }
+    function play() {
+      cancelAnimationFrame(raf);
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { pose(1); return; }
+      let from = u >= 0.999 ? 0 : u;
+      const dur = 6500 * (1 - from), t0 = performance.now();
+      const step = (now) => { const p = Math.min(1, (now - t0) / dur); pose(from + (1 - from) * p); if (p < 1) raf = requestAnimationFrame(step); else $('#play').textContent = 'Replay packing'; };
+      $('#play').textContent = 'Packing';
+      raf = requestAnimationFrame(step);
+    }
+    function stop() { cancelAnimationFrame(raf); $('#play').textContent = 'Play packing'; }
+    window.addEventListener('resize', () => st.ok && !$('#stage_carton').hidden && st.draw());
+    return { build, pose, play, stop, st };
+  })();
+
+  // ---------- state ----------
+  const S = { prm: null, result: null, sel: null, c: null, pal: 0, view: 'pallet', btab: 'options', sort: 'units', sorted: [], runId: 0, worker: undefined };
+
+  const cartonLabel = (c) => `${c.n} units · outside ${c.outer.map(f1).join(' × ')} cm`;
+  function sortFn(key, i) {
+    const s = (c) => c.scen[i];
+    return {
+      units: (p, q) => s(q).units - s(p).units || s(q).floorAvg - s(p).floorAvg,
+      floor: (p, q) => s(q).floorAvg - s(p).floorAvg || s(q).units - s(p).units,
+      few: (p, q) => s(q).units - s(p).units || s(p).boxes - s(q).boxes,
+      comp: (p, q) => (s(q).comp ? s(q).comp.margin : 0) - (s(p).comp ? s(p).comp.margin : 0) || s(q).units - s(p).units,
+      tie: (p, q) => (s(q).minTie || 0) - (s(p).minTie || 0) || s(q).units - s(p).units,
+    }[key];
+  }
+  const tieTxt = (sc) => (sc.minTie == null ? (sc.units ? 'one layer' : 'n/a') : Math.round(sc.minTie * 100) + '%');
+  const compClass = (m) => (m == null ? 'info' : m >= 1 ? 'good' : m >= 0.8 ? 'warn' : 'bad');
+
+  function renderTable() {
+    const P = S.prm.pallets, i = S.pal;
+    $('#res_head').innerHTML = `<tr><th class="num">#</th><th class="num">Units</th><th>Inside dimensions (cm)</th><th>Outside dimensions (cm)</th><th class="num">kg</th>${P.map((p, k) => `<th class="num">Opt ${k + 1}${P.length > 1 ? '' : ''} units</th>`).join('')}<th class="num">Volume</th><th class="num">Floor</th><th class="num">Interlock</th><th class="num">Compression</th><th class="num">+${f1(S.prm.tolerance)} cm</th></tr>`;
+    const rows = S.result.cartons.slice().sort(sortFn(S.sort, i));
+    S.sorted = rows;
+    $('#res_body').innerHTML = rows.map((c, r) => {
+      const sc = c.scen[i], m = sc.comp ? sc.comp.margin : null;
+      const sel = S.c && !S.c.custom && S.c.id === c.id ? ' class="sel"' : '';
+      return `<tr data-r="${r}"${sel}><td class="num">${r + 1}</td><td class="num">${c.n}</td><td class="mono">${c.inner.map(f1).join(' × ')}</td><td class="mono">${c.outer.map(f1).join(' × ')}</td><td class="num">${fmt(c.kg, 1)}</td>${c.scen.map((x, k) => `<td class="num">${k === i ? '<b>' + x.units + '</b>' : x.units}</td>`).join('')}<td class="num">${pct(sc.fillMax)}</td><td class="num">${pct(sc.floorAvg || 0)}</td><td class="num">${tieTxt(sc)}</td><td class="num"><span class="chip ${compClass(m)}">${m == null || !isFinite(m) ? 'no load' : m.toFixed(1) + '×'}</span></td><td class="num">${c.tol ? c.tol[i] : ''}</td></tr>`;
+    }).join('') || `<tr><td colspan="${10 + P.length}">No carton meets the limits. Raise the max carton weight or side.</td></tr>`;
+    $('#opt_note').textContent = `Top ${rows.length} of ${S.result.total} cartons, ranked on option ${i + 1}. Loose units, no carton: ${S.result.loose[i]}.`;
+  }
+
+  function evalSel() {
+    const p = S.prm, s = S.sel;
+    if (s.custom) return E.evalCustom(p, s.inner, s.n, s.flap);
+    const hit = S.result && S.result.cartons.find((c) => c.arr.join() === s.arr.join() && c.ori.join() === s.ori.join() && c.flap === s.flap);
+    return hit || E.evalArrangement(p, s.arr, s.ori, s.flap);
+  }
+
+  function renderKpis(c, sc) {
+    const m = sc.comp ? sc.comp.margin : null, inc = S.prm.heightIncludesBase;
+    const tie = sc.minTie;
+    const k = [
+      ['Units / pallet', sc.units, `${sc.boxes} cartons × ${c.n}`],
+      [inc ? 'Total height' : 'Load height', f1(sc.builtCm + (inc ? S.prm.baseH : 0)) + ' cm', `max ${f1(sc.pal.H)} · ${f1(sc.headroom)} cm spare`],
+      ['Volume used', pct(sc.fillMax), `${pct(sc.fillBuilt)} of built`],
+      ['Floor used', pct(sc.floorAvg || 0), `lowest layer ${pct(sc.floorMin || 0)}`],
+      ['Interlock', tie == null ? 'n/a' : Math.round(tie * 100) + '%', tie == null ? 'single layer' : tie === 0 ? 'column stack' : 'weakest joint', tie == null ? '' : tie >= S.prm.brickMin ? 'good' : tie > 0 ? 'warn' : 'bad'],
+      ['Compression', m == null || !isFinite(m) ? 'no load' : m.toFixed(1) + '×', sc.comp && isFinite(m) ? `${fmt(sc.comp.strength / 9.81, 0)} vs ${fmt(sc.comp.needed / 9.81, 0)} kgf` : 'nothing stacked', compClass(m)],
+      ['Gross', fmt(sc.gross, 0) + ' kg', sc.costPerUnit != null ? `cost ${fmt(sc.costPerUnit, 2)} / unit` : `chg ${fmt(sc.chgPerUnit, 2)} kg / unit`],
+    ];
+    $('#kpis').innerHTML = k.map(([a, v, s, cls]) => `<div class="kpi ${cls || ''}"><div class="k">${a}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+  }
+
+  function renderPlans(c, sc) {
+    const p = S.prm, ks = typeKeys(sc), pks = [];
+    sc.layers.forEach((l) => { if (!pks.includes(l.pid)) pks.push(l.pid); });
+    let h = pks.map((k, i) => {
+      const ly = sc.layers.find((l) => l.pid === k), idx = sc.layers.map((l, j) => (l.pid === k ? j + 1 : 0)).filter(Boolean);
+      const how = ly.axis === c.flap ? 'upright, flaps top and bottom' : 'on its side';
+      return `<div class="plan">${layerSVG(p, sc.pal, ly, TYPE_CLASS[ks.indexOf(ly.h + ':' + ly.axis) % 3])}<div class="cap"><b>Pattern ${String.fromCharCode(65 + i)}</b> · ${how} · ${f1(ly.h / 10)} cm tall · layer${idx.length > 1 ? 's' : ''} ${idx.join(', ')}</div></div>`;
+    }).join('');
+    h += `<div class="plan">${elevationSVG(p, sc)}<div class="cap"><b>Side view</b> · layers bottom to top</div></div>`;
+    $('#plans').innerHTML = sc.units ? h : '<p class="note">This carton does not fit this pallet option.</p>';
+  }
+
+  function renderBoards(c) {
+    const p = S.prm, i = S.pal;
+    $('#board_note').textContent = `Same ${c.n}-unit arrangement built from each board. Thickness is at or above the published nominal for each flute (Fibre Box Association, DIN 55468). ECT and weight are typical estimates.`;
+    const rows = BOARDS.map((b) => {
+      const p2 = Object.assign({}, p, { board: { t: b.t, ect: b.ect, gsm: b.gsm } });
+      const cc = c.custom ? E.evalCustom(p2, c.inner, c.n, c.flap) : E.evalArrangement(p2, c.arr, c.ori, c.flap);
+      const sc = cc.scen[i], m = sc.comp ? sc.comp.margin : null;
+      const cur = Math.abs(b.t - p.board.t) < 1e-9 && Math.abs(b.ect - p.board.ect) < 1e-9;
+      return `<tr${cur ? ' class="sel"' : ''}><td><span class="wall-mini">${boardSVG(b, 3.2, 14)}<b>${b.name}</b></span></td><td class="num">${b.t.toFixed(1)}</td><td class="mono">${cc.outer.map(f1).join(' × ')}</td><td class="num">${fmt(cc.kg, 1)}</td>${cc.scen.map((x, k) => `<td class="num">${k === i ? '<b>' + x.units + '</b>' : x.units}</td>`).join('')}<td class="num"><span class="chip ${compClass(m)}">${m == null || !isFinite(m) ? 'no load' : m.toFixed(1) + '×'}</span></td><td>${cur ? '<span class="chip info">in use</span>' : `<button class="btn sm" type="button" data-board="${b.id}">Use</button>`}</td></tr>`;
+    }).join('');
+    $('#board_table').innerHTML = `<thead><tr><th>Board</th><th class="num">Wall thickness (mm)</th><th>Outside dimensions (cm)</th><th class="num">Carton kg</th>${p.pallets.map((_, k) => `<th class="num">Opt ${k + 1} units</th>`).join('')}<th class="num">Compression</th><th></th></tr></thead><tbody>${rows}</tbody>`;
+  }
+
+  function renderChecks(c, sc) {
+    const chk = getChecks(c, sc);
+    const word = { good: 'pass', warn: 'check', bad: 'fail', info: 'info' };
+    const grp = (g) => `<div><h3>${g}${g === 'Pallet' ? ` · option ${S.pal + 1}, ISTA 1E / 3E` : ', ISTA 1A / 2A'}</h3>` + chk.filter((x) => x.grp === g).map((x) => `<div class="check"><span><span class="chip ${x.st}">${word[x.st]}</span></span><div><div class="what">${x.what}</div><div class="val">${x.val}</div></div><div class="basis">${x.basis}</div></div>`).join('') + '</div>';
+    $('#checks').innerHTML = grp('Single carton') + (sc.units ? grp('Pallet') : '<p class="note">This carton does not fit pallet option ' + (S.pal + 1) + '.</p>') + '<p class="note">These are theoretical estimates. ISTA parameters quoted here come from the public procedure overviews; a lab test is still needed.</p>';
+  }
+  function getChecks(c, sc) {
+    const p = S.prm, chk = [];
+    const add = (grp, st, what, val, basis) => chk.push({ grp, st, what, val, basis });
+    const kg = c.kg;
+    add('Single carton', kg <= 68 ? 'good' : 'bad', 'Test scope', `${fmt(kg, 1)} kg per carton`, kg <= 68 ? 'ISTA 1A or 2A cover individual packages up to 68 kg (2A adds conditioning and compression).' : 'Over 68 kg: ISTA 1B or 2B apply instead.');
+    const drop = kg <= 21 ? 76 : kg <= 41 ? 61 : kg <= 61 ? 46 : 30;
+    add('Single carton', 'info', 'Drop height', `about ${drop} cm`, 'Height in the 1A and 2A shock test varies with packaged weight. This is the commonly quoted band for this weight, not taken from ISTA. Check the full procedure.');
+    const block = c.block || (c.arr ? c.arr.map((v, i) => v * c.ori[i]) : c.inner);
+    const play = Math.max(...c.inner.map((v, i) => v - block[i]));
+    add('Single carton', play <= 0.6 ? 'good' : play <= 1.5 ? 'warn' : 'bad', 'Units can move', `up to ${f1(play)} cm`, 'Loose units knock together under vibration (1A uses 25 mm fixed displacement). Above 0.6 cm, add dividers or void fill.');
+    add('Single carton', c.cartonFill >= 0.8 ? 'good' : c.cartonFill >= 0.65 ? 'warn' : 'bad', 'Carton fill', pct(c.cartonFill), 'Share of the outside volume taken by product. Low fill means more air shipped and more crush risk.');
+    add('Single carton', kg <= 15 ? 'good' : kg <= 23 ? 'warn' : 'bad', 'Handling weight', `${fmt(kg, 1)} kg`, 'Rule of thumb for one-person lifting. Limits differ by country and company policy.');
+    if (sc.units) {
+      const m = sc.comp ? sc.comp.margin : null;
+      add('Pallet', compClass(m), 'Compression', m == null || !isFinite(m) ? 'no load' : `${m.toFixed(2)}× needed`, sc.comp && isFinite(m) ? `Weakest carton (layer ${sc.comp.layer + 1}) can take about ${fmt(sc.comp.strength / 9.81, 0)} kgf against ${fmt(sc.comp.needed / 9.81, 0)} kgf needed (load × ${p.sf}). 2A and 3E include a compression test.` : 'No cartons sit on top of others.');
+      const tie = sc.minTie;
+      add('Pallet', tie == null ? 'info' : tie >= p.brickMin ? 'good' : tie > 0 ? 'warn' : 'bad', 'Interlock', tie == null ? 'single layer' : Math.round(tie * 100) + '% weakest joint', 'Layers that bridge each other hold together in the edge drops of 1E (200 mm) and 3E. Column stacks can split apart.');
+      add('Pallet', sc.floorMin >= 0.85 ? 'good' : sc.floorMin >= 0.75 ? 'warn' : 'bad', 'Floor coverage', `${pct(sc.floorMin)} lowest layer`, 'Gaps let cartons slide in the impact tests (1E at 1.7 m/s, 3E at 1.2 m/s). Fill gaps or use corner boards below 85%.');
+      add('Pallet', p.overhang > 0 ? 'warn' : 'good', 'Overhang', p.overhang > 0 ? `${f1(p.overhang)} cm per side` : 'none', 'Overhanging cartons lose a large part of their stacking strength and take the first hit in impacts.');
+      const slim = sc.builtCm / Math.min(sc.pal.L, sc.pal.W);
+      add('Pallet', slim <= 2 ? 'good' : slim <= 2.5 ? 'warn' : 'bad', 'Slenderness', `height ${fmt(slim, 2)} × the short side`, 'Rule of thumb: tall, narrow loads tip in edge drops. Keep the load under 2 times the short side of the pallet.');
+      const e12 = 0.5 * sc.gross * 1.2 * 1.2, e17 = 0.5 * sc.gross * 1.7 * 1.7;
+      add('Pallet', 'info', 'Impact energy', `${fmt(e12, 0)} J at 1.2 m/s · ${fmt(e17, 0)} J at 1.7 m/s`, 'Kinetic energy of the full pallet at the 3E and 1E impact speeds. Heavier loads need stronger stretch wrap and corner boards.');
+      add('Pallet', sc.headroom >= 1 ? 'good' : 'warn', 'Height limit', `${f1(sc.headroom)} cm spare`, 'Less than 1 cm leaves no room for board swelling or a thicker pallet.');
+    }
+    return chk;
+  }
+
+  function renderSelected() {
+    if (!S.sel) return;
+    const c = evalSel(); S.c = c;
+    const sc = c.scen[Math.min(S.pal, c.scen.length - 1)];
+    $('#sel_label').textContent = c.custom ? 'Your carton' : 'Selected carton';
+    $('#sel_title').textContent = cartonLabel(c);
+    renderKpis(c, sc);
+    const tie = sc.minTie;
+    $('#hud').textContent = sc.units ? `${sc.layers.length} layers · ${sc.boxes} cartons · weakest joint ${tie == null ? 'n/a' : Math.round(tie * 100) + '% tied'} · dashed box = ${f1(sc.usable)} cm of load space` : 'This carton does not fit this pallet option';
+    if (S.view === 'pallet') PV.build(S.prm, c, sc, { units: $('#show_units').checked, explode: +$('#explode').value, spread: +$('#spread').value });
+    else { CV.build(S.prm, c, $('#xray').checked); }
+    $('#hud_c').textContent = `Inside ${c.inner.map(f1).join(' × ')} cm · outside ${c.outer.map(f1).join(' × ')} cm · ${S.prm.boardName}, ${f1(S.prm.board.t)} mm · flaps fold over the ${c.outer.filter((_, i) => i !== c.flap).map(f1).join(' × ')} cm faces · ${c.n} units${c.arr ? '' : ' (they do not fit)'}`;
+    renderPlans(c, sc);
+    if (S.btab === 'boards') renderBoards(c);
+    renderChecks(c, sc);
+    document.querySelectorAll('#res_body tr').forEach((tr) => tr.classList.toggle('sel', !c.custom && S.sorted[+tr.dataset.r] && S.sorted[+tr.dataset.r].id === c.id));
+    $('#pdf_load').disabled = $('#pdf_spec').disabled = !sc.units;
+  }
+
+  function renderPalSeg() {
+    const n = S.prm.pallets.length;
+    $('#pal_seg').hidden = n < 2;
+    $('#pal_seg').innerHTML = S.prm.pallets.map((p, i) => `<button type="button" role="tab" data-pal="${i}" aria-selected="${i === S.pal}">${n > 2 ? `Opt ${i + 1}` : `Option ${i + 1}`} · ${p.L}×${p.W}×${p.H}</button>`).join('');
+  }
+
+  function markDirty() {
+    S.dirty = true;
+    $('#calc').textContent = 'Calculate with new inputs';
+    $('#calc_bar').classList.add('dirty');
+    $('#run_status').textContent = 'Inputs changed. Results show the last calculation.';
+    $('.main-col').classList.add('stale');
+  }
+  function runAll(keep) {
+    const u = ['u_l', 'u_w', 'u_h', 'u_kg'].map((id) => parseFloat($('#' + id).value));
+    if (u.some((v) => !isFinite(v) || v <= 0)) {
+      $('#run_status').textContent = 'Enter the product length, width, height and weight, then press Calculate.';
+      $('#calc_bar').classList.add('dirty');
+      const first = ['u_l', 'u_w', 'u_h', 'u_kg'].find((id, i) => !isFinite(u[i]) || u[i] <= 0);
+      $('#inputs details').open = true; $('#' + first).focus();
+      return;
+    }
+    S.dirty = false;
+    $('#calc').textContent = 'Calculate'; $('#calc').disabled = true;
+    $('#calc_bar').classList.remove('dirty');
+    $('.main-col').classList.remove('stale');
+    $('#run_status').textContent = 'Calculating';
+    const t0 = performance.now(), prevUnit = S.prm ? S.prm.unit.join() : null;
+    const prm = readParams();
+    const id = ++S.runId;
+    clearInterval(S.tick);
+    S.tick = setInterval(() => { $('#run_status').textContent = `Calculating, ${fmt((performance.now() - t0) / 1000, 0)} s`; }, 500);
+    const done = (result) => {
+      if (id !== S.runId) return; // a newer run replaced this one
+      S.busy = false;
+      clearInterval(S.tick);
+      S.prm = prm;
+      if (prevUnit && prevUnit !== prm.unit.join() && S.sel && !S.sel.custom) keep = false; // old arrangement no longer matches the unit
+      if (S.pendingPal != null) { S.pal = S.pendingPal; S.pendingPal = null; }
+      if (S.pal >= prm.pallets.length) S.pal = 0;
+      S.result = result;
+      renderPalSeg();
+      renderTable();
+      // keep the shown carton only if it is still a valid option under the new inputs
+      if (keep && S.sel && !S.sel.custom && !result.cartons.some((c) => c.arr.join() === S.sel.arr.join() && c.ori.join() === S.sel.ori.join() && c.flap === S.sel.flap)) keep = false;
+      if (!keep || !S.sel) { const c0 = S.sorted[0]; if (c0) S.sel = { arr: c0.arr, ori: c0.ori, flap: c0.flap }; }
+      renderSelected();
+      $('#calc').disabled = false;
+      $('#run_status').textContent = `Searched ${result.total} cartons on ${prm.pallets.length} pallet option${prm.pallets.length > 1 ? 's' : ''} in ${fmt((performance.now() - t0) / 1000, 1)} s`;
+    };
+    const fail = (msg) => {
+      if (id !== S.runId) return;
+      S.busy = false;
+      clearInterval(S.tick);
+      $('#calc').disabled = false;
+      $('#run_status').textContent = `The calculation stopped: ${msg}. Check the inputs and press Calculate again.`;
+    };
+    if (S.busy && S.worker) { S.worker.terminate(); S.worker = undefined; } // drop the run in progress, start fresh
+    S.busy = true;
+    const w = getWorker();
+    if (w) { w.onmessage = (e) => (e.data.error ? fail(e.data.error) : done(e.data.result)); w.onerror = (e) => { e.preventDefault(); S.worker = null; fail(e.message || 'worker error'); }; w.postMessage(prm); }
+    else setTimeout(() => { try { done(E.run(prm)); } catch (err) { fail(err.message); } }, 20);
+  }
+  // the search runs in a background worker so the page never locks while it works
+  function getWorker() {
+    if (S.worker !== undefined && S.worker !== null) return S.worker;
+    try {
+      const src = $('#engine_src').textContent + '\nself.onmessage = function (e) { try { self.postMessage({ result: PalEngine.run(e.data) }); } catch (err) { self.postMessage({ error: String(err && err.message || err) }); } };';
+      S.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    } catch (err) { S.worker = false; }
+    return S.worker || null;
+  }
+
+  function setView(v) {
+    S.view = v;
+    $('#tab_pallet').setAttribute('aria-selected', v === 'pallet'); $('#tab_carton').setAttribute('aria-selected', v === 'carton');
+    $('#stage_pallet').hidden = v !== 'pallet'; $('#ctl_pallet').hidden = v !== 'pallet';
+    $('#stage_carton').hidden = v !== 'carton'; $('#ctl_carton').hidden = v !== 'carton';
+    CV.stop(); PV.stop();
+    renderSelected();
+  }
+
+  // ---------- events ----------
+  // typed and picked inputs wait for Calculate (or Enter); nothing recalculates while you type
+  $('#inputs').addEventListener('input', (e) => {
+    const id = e.target.id;
+    if (['c_l', 'c_w', 'c_h', 'c_n', 'c_flap'].includes(id)) return;
+    if (e.target.dataset.pi != null) { const v = parseFloat(e.target.value); if (isFinite(v) && v > 0) pallets[+e.target.dataset.pi][e.target.dataset.pk] = v; }
+    if (['b_t', 'b_ect', 'b_gsm'].includes(id)) $('#board').value = BOARDS.find((b) => Math.abs(b.t - num('b_t', 0)) < 1e-9 && Math.abs(b.ect - num('b_ect', 0)) < 1e-9 && Math.abs(b.gsm - num('b_gsm', 0)) < 1e-9)?.id || $('#board').value;
+    markDirty();
+  });
+  $('#board').addEventListener('change', () => { const b = BOARDS.find((x) => x.id === $('#board').value); $('#b_t').value = b.t; $('#b_ect').value = b.ect; $('#b_gsm').value = b.gsm; renderBoardViz(); markDirty(); });
+  $('#b_t').addEventListener('input', renderBoardViz);
+  $('#inputs').addEventListener('submit', (e) => { e.preventDefault(); runAll(true); });
+  // common pallet footprints offered in turn: EUR, industrial/UK, Asia, North American (48 × 40 in), half pallet
+  const PRESETS = [[120, 80], [120, 100], [110, 110], [121.9, 101.6], [80, 60]];
+  $('#pal_add').addEventListener('click', () => {
+    if (pallets.length >= MAX_PAL) return;
+    const last = pallets[pallets.length - 1];
+    const pre = PRESETS.find(([L, W]) => !pallets.some((p) => p.L === L && p.W === W)) || [last.L, last.W];
+    pallets.push({ L: pre[0], W: pre[1], H: last.H }); renderPalList(); S.pendingPal = pallets.length - 1; markDirty();
+  });
+  $('#pal_list').addEventListener('click', (e) => { const b = e.target.closest('[data-prm]'); if (!b) return; pallets.splice(+b.dataset.prm, 1); renderPalList(); S.pendingPal = 0; markDirty(); });
+  $('#pal_seg').addEventListener('click', (e) => { const b = e.target.closest('[data-pal]'); if (!b) return; S.pal = +b.dataset.pal; renderPalSeg(); renderTable(); renderSelected(); });
+  $('#test_custom').addEventListener('click', () => {
+    if (!S.prm) { $('#custom_msg').hidden = false; $('#custom_msg').textContent = 'Press Calculate first, so the carton can be tested against your pallets.'; return; }
+    const inner = [num('c_l', 57), num('c_w', 20), num('c_h', 43)], n = Math.max(1, Math.round(num('c_n', 6))), flap = +$('#c_flap').value;
+    const c = E.evalCustom(S.prm, inner, n, flap);
+    $('#custom_msg').hidden = c.fits;
+    $('#custom_msg').textContent = c.fits ? '' : `${n} units of ${S.prm.unit.join(' × ')} cm do not fit inside ${inner.join(' × ')} cm. The carton is shown empty.`;
+    S.sel = { custom: true, inner, n, flap };
+    renderSelected();
+  });
+  $('#res_body').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-r]'); if (!tr) return; const c = S.sorted[+tr.dataset.r]; S.sel = { arr: c.arr, ori: c.ori, flap: c.flap }; renderSelected(); });
+  $('#sort_by').addEventListener('change', (e) => { S.sort = e.target.value; renderTable(); });
+  $('#tab_pallet').addEventListener('click', () => setView('pallet'));
+  $('#tab_carton').addEventListener('click', () => { setView('carton'); CV.pose(0); CV.play(); });
+  $('#brick').addEventListener('change', () => runAll(true));
+  $('#show_units').addEventListener('change', renderSelected);
+  ['explode', 'spread'].forEach((id) => $('#' + id).addEventListener('input', renderSelected));
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => PV.view(b.dataset.view)));
+  $('#play').addEventListener('click', () => CV.play());
+  $('#pplay').addEventListener('click', () => PV.play());
+  $('#pscrub').addEventListener('input', (e) => { PV.stop(); PV.pose(+e.target.value); });
+  $('#scrub').addEventListener('input', (e) => { CV.stop(); CV.pose(+e.target.value); });
+  $('#xray').addEventListener('change', () => { if (S.c) CV.build(S.prm, S.c, $('#xray').checked); });
+  document.querySelectorAll('[data-btab]').forEach((b) => b.addEventListener('click', () => {
+    S.btab = b.dataset.btab;
+    document.querySelectorAll('[data-btab]').forEach((x) => x.setAttribute('aria-selected', x === b));
+    document.querySelectorAll('[data-bpane]').forEach((p) => { p.hidden = p.dataset.bpane !== S.btab; });
+    if (S.btab === 'boards' && S.c) renderBoards(S.c);
+  }));
+  $('#board_table').addEventListener('click', (e) => { const b = e.target.closest('[data-board]'); if (!b) return; $('#board').value = b.dataset.board; $('#board').dispatchEvent(new Event('change')); runAll(true); });
+  $('#copy_csv').addEventListener('click', () => {
+    if (!S.prm || !S.result) return;
+    const P = S.prm.pallets, i = S.pal;
+    const lines = [['units_per_carton', 'inside_cm', 'outside_cm', 'flap_axis', 'carton_kg', ...P.map((p, k) => `units_opt${k + 1}_${p.L}x${p.W}x${p.H}`), 'volume', 'floor', 'interlock', 'compression_margin', 'units_with_tolerance'].join(',')];
+    for (const c of S.sorted) { const sc = c.scen[i]; lines.push([c.n, c.inner.join('x'), c.outer.join('x'), AX[c.flap], c.kg.toFixed(2), ...c.scen.map((x) => x.units), sc.fillMax.toFixed(4), (sc.floorAvg || 0).toFixed(4), sc.minTie == null ? '' : sc.minTie.toFixed(2), sc.comp && isFinite(sc.comp.margin) ? sc.comp.margin.toFixed(2) : '', c.tol ? c.tol[i] : ''].join(',')); }
+    const txt = lines.join('\n'), ta = $('#csv_out'), btn = $('#copy_csv');
+    const fallback = () => { ta.hidden = false; ta.value = txt; ta.focus(); ta.select(); btn.textContent = 'Select and copy below'; };
+    try { navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copied'; setTimeout(() => (btn.textContent = 'Copy as CSV'), 1600); }, fallback); } catch (err) { fallback(); }
+  });
+  if (!PV.st.ok) $('#hud').textContent = '3D needs WebGL, which this browser has turned off. The layer plans still work.';
+
+  // ---------- PDF exports (built in the page with jsPDF, handed to the viewer through the downloads capability) ----------
+  const PDFC = {
+    accent: [31, 110, 140], band: [34, 48, 58], ink: [34, 48, 58], strong: [17, 26, 33], panel: [238, 241, 243], mute: [102, 115, 125], line: [217, 223, 227],
+    kraft: [196, 140, 78], kraft3: [220, 174, 118], kraftE: [94, 62, 25], wood: [156, 122, 85], unit: [79, 124, 172],
+    good: [47, 125, 87], warn: [183, 121, 31], bad: [192, 57, 43], info: [102, 115, 125],
+  };
+  const PWORD = { good: 'PASS', warn: 'CHECK', bad: 'FAIL', info: 'INFO' };
+  // the standard PDF fonts only carry Latin-1, so swap the few symbols outside it
+  const pt = (v) => String(v).replace(/√/g, 'sqrt').replace(/≈/g, '~').replace(/≤/g, '<=').replace(/≥/g, '>=').replace(/→/g, '->').replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+  const isoDate = () => new Date().toISOString().slice(0, 10);
+  let downloads = null;
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('downloads').then((d) => { downloads = d; }).catch(() => { downloads = null; });
+  }
+
+  function pdfCtx(title, sub) {
+    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+    const c = { doc, W: 210, H: 297, M: 14, y: 0, title, sub };
+    doc.setFillColor(...PDFC.band); doc.rect(0, 0, c.W, 36, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setCharSpace(1.4);
+    doc.text('MASTER CARTON PLANNER', c.M, 11); doc.setCharSpace(0);
+    doc.setFontSize(21); doc.text(pt(title.toUpperCase()), c.M, 23.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.text(pt(sub), c.M, 30.5);
+    c.y = 44;
+    return c;
+  }
+  function pdfEnsure(c, h) { if (c.y + h > c.H - 18) { c.doc.addPage(); c.y = 24; } }
+  function pdfH2(c, text) {
+    c.y += 4;
+    pdfEnsure(c, 30);
+    const d = c.doc;
+    d.setFont('helvetica', 'bold'); d.setFontSize(12.5); d.setTextColor(...PDFC.accent); d.setCharSpace(0.3);
+    d.text(pt(text.toUpperCase()), c.M, c.y); d.setCharSpace(0);
+    d.setDrawColor(...PDFC.accent); d.setLineWidth(0.5); d.line(c.M, c.y + 2, c.M + 18, c.y + 2);
+    c.y += 8;
+  }
+  function pdfH3(c, text) {
+    pdfEnsure(c, 10);
+    const d = c.doc;
+    d.setFont('helvetica', 'bold'); d.setFontSize(10); d.setTextColor(...PDFC.strong); d.text(pt(text.toUpperCase()), c.M, c.y); c.y += 5.5;
+  }
+  function pdfPara(c, text, o = {}) {
+    const d = c.doc, size = o.size || 9.2, x = o.x != null ? o.x : c.M, w = o.w || c.W - 2 * c.M;
+    d.setFont('helvetica', o.bold ? 'bold' : 'normal'); d.setFontSize(size); d.setTextColor(...(o.color || PDFC.ink));
+    const lines = d.splitTextToSize(pt(text), w), lh = size * 0.45;
+    pdfEnsure(c, lines.length * lh + 1);
+    d.text(lines, x, c.y); c.y += lines.length * lh + (o.after != null ? o.after : 2.2);
+  }
+  function pdfSteps(c, items) {
+    items.forEach((t, i) => {
+      const d = c.doc;
+      d.setFont('helvetica', 'normal'); d.setFontSize(9.2);
+      const lines = d.splitTextToSize(pt(t), c.W - 2 * c.M - 9);
+      pdfEnsure(c, lines.length * 4.3 + 2);
+      d.setFillColor(...PDFC.accent); d.circle(c.M + 2.6, c.y - 1.2, 2.6, 'F');
+      d.setTextColor(255, 255, 255); d.setFont('helvetica', 'bold'); d.setFontSize(8); d.text(String(i + 1), c.M + 2.6, c.y - 0.1, { align: 'center' });
+      d.setTextColor(...PDFC.ink); d.setFont('helvetica', 'normal'); d.setFontSize(9.2); d.text(lines, c.M + 8, c.y);
+      c.y += lines.length * 4.2 + 2.4;
+    });
+  }
+  function pdfTiles(c, items, perRow = 4) {
+    const d = c.doc, gap = 3, w = (c.W - 2 * c.M - gap * (perRow - 1)) / perRow, h = 17;
+    for (let r = 0; r < items.length; r += perRow) {
+      pdfEnsure(c, h + gap);
+      items.slice(r, r + perRow).forEach(([k, v, s], i) => {
+        const x = c.M + i * (w + gap);
+        d.setFillColor(...PDFC.panel); d.roundedRect(x, c.y, w, h, 2, 2, 'F');
+        d.setFont('helvetica', 'bold'); d.setFontSize(6.8); d.setTextColor(...PDFC.mute); d.setCharSpace(0.4); d.text(pt(k.toUpperCase()), x + 3, c.y + 4.8); d.setCharSpace(0);
+        d.setFontSize(13); d.setTextColor(...PDFC.strong); d.text(pt(v), x + 3, c.y + 11.2);
+        if (s) { d.setFont('helvetica', 'normal'); d.setFontSize(6.8); d.setTextColor(...PDFC.mute); d.text(pt(s), x + 3, c.y + 15); }
+      });
+      c.y += h + gap;
+    }
+    c.y += 2;
+  }
+  function pdfTable(c, head, body, o = {}) {
+    c.doc.autoTable(Object.assign({
+      startY: c.y, head: [head.map(pt)], body: body.map((r) => r.map((v) => (typeof v === 'object' && v !== null ? v : pt(v)))),
+      theme: 'grid', margin: { left: c.M, right: c.M, top: 24, bottom: 20 }, rowPageBreak: 'avoid',
+      styles: { font: 'helvetica', fontSize: 8.2, textColor: PDFC.ink, lineColor: PDFC.line, lineWidth: 0.2, cellPadding: 1.8, overflow: 'linebreak' },
+      headStyles: { fillColor: PDFC.panel, textColor: PDFC.strong, fontStyle: 'bold', fontSize: 7.6 },
+      alternateRowStyles: { fillColor: [252, 250, 249] },
+    }, o));
+    c.y = c.doc.lastAutoTable.finalY + 6;
+  }
+  function pdfImage(c, url, w, h, caption, x) {
+    pdfEnsure(c, h + (caption ? 6 : 2));
+    const d = c.doc, xx = x != null ? x : c.M;
+    d.setDrawColor(...PDFC.line); d.setLineWidth(0.2); d.roundedRect(xx, c.y, w, h, 2, 2, 'S');
+    d.addImage(url, 'JPEG', xx + 0.5, c.y + 0.5, w - 1, h - 1);
+    if (caption) { d.setFont('helvetica', 'normal'); d.setFontSize(7.6); d.setTextColor(...PDFC.mute); d.text(d.splitTextToSize(pt(caption), w), xx, c.y + h + 4); }
+  }
+  // a layer seen from above: cartons in kraft, numbered in loading order or labelled with their size
+  function pdfPlan(c, x, y, w, sc, ly, o = {}) {
+    const d = c.doc, pal = sc.pal, k = w / (pal.L * 10), h = pal.W * 10 * k, off = E.mm(S.prm.overhang);
+    d.setFillColor(...PDFC.panel); d.setDrawColor(...PDFC.mute); d.setLineWidth(0.3); d.rect(x, y, w, h, 'FD');
+    const rects = ly.rects.map((r) => ({ x: r.x - off, y: r.y - off, w: r.w, l: r.l })).sort((p, q) => q.y - p.y || p.x - q.x);
+    rects.forEach((r, i) => {
+      const rx = x + r.x * k, ry = y + h - (r.y + r.l) * k, rw = r.w * k, rh = r.l * k;
+      d.setFillColor(...(o.alt ? PDFC.kraft3 : PDFC.kraft)); d.setDrawColor(...PDFC.kraftE); d.setLineWidth(0.25); d.rect(rx, ry, rw, rh, 'FD');
+      d.setTextColor(36, 22, 10); d.setFont('helvetica', 'bold');
+      if (o.numbers) { const fs = Math.max(5, Math.min(11, Math.min(rw, rh) * 1.4)); d.setFontSize(fs); d.text(String((o.start || 0) + i + 1), rx + rw / 2, ry + rh / 2 + fs * 0.13, { align: 'center' }); }
+      else if (rw > 9 && rh > 5) { const t = `${f1(r.w / 10)}×${f1(r.l / 10)}`, fs = Math.max(4.5, Math.min(7.5, (rw * 2.2) / t.length)); d.setFontSize(fs); d.text(t, rx + rw / 2, ry + rh / 2 + fs * 0.13, { align: 'center' }); }
+    });
+    d.setFont('helvetica', 'normal'); d.setFontSize(7); d.setTextColor(...PDFC.mute);
+    d.text(o.sides ? `far side · ${f1(pal.L)} cm` : `${f1(pal.L)} cm`, x + w / 2, y - 1.5, { align: 'center' });
+    d.text(`${f1(pal.W)} cm`, x - 1.8, y + h / 2, { angle: 90, align: 'center' });
+    if (o.sides) { d.setTextColor(...PDFC.accent); d.setFont('helvetica', 'bold'); d.text('OPERATOR SIDE (load from here)', x + w / 2, y + h + 4, { align: 'center' }); }
+    return h;
+  }
+  // side view of the stack with the height limit
+  function pdfSide(c, x, y, w, h, sc) {
+    const d = c.doc, p = S.prm, base = p.baseH, inc = p.heightIncludesBase;
+    const total = Math.max(sc.usable, sc.builtCm) + base, k = (h - 4) / total, bw = w * 0.55, x0 = x + 2, yb = y + h;
+    d.setFillColor(...PDFC.wood); d.rect(x0, yb - base * k, bw, base * k, 'F');
+    let z = 0;
+    sc.layers.forEach((ly, i) => {
+      const lh = ly.h / 10, yy = yb - (base + z + lh) * k;
+      d.setFillColor(...(i % 2 ? PDFC.kraft3 : PDFC.kraft)); d.setDrawColor(...PDFC.kraftE); d.setLineWidth(0.2); d.rect(x0, yy, bw, lh * k, 'FD');
+      if (lh * k > 3.2) { d.setFont('helvetica', 'bold'); d.setFontSize(6.5); d.setTextColor(36, 22, 10); d.text(`L${i + 1} · ${f1(lh)} cm · ${ly.cnt}`, x0 + 1.5, yy + (lh * k) / 2 + 1); }
+      z += lh;
+    });
+    const yl = yb - (base + sc.usable) * k;
+    d.setDrawColor(...PDFC.bad); d.setLineWidth(0.4); d.setLineDashPattern([1.2, 1], 0); d.line(x0 - 2, yl, x0 + bw + 2, yl); d.setLineDashPattern([], 0);
+    d.setFont('helvetica', 'normal'); d.setFontSize(7); d.setTextColor(...PDFC.mute);
+    d.text(`${f1(inc ? sc.pal.H : sc.usable)} cm max`, x0 + bw + 3, yl + 1);
+    d.setTextColor(...PDFC.strong); d.setFont('helvetica', 'bold');
+    d.text(`${f1(sc.builtCm + (inc ? base : 0))} cm ${inc ? 'total' : 'load'}`, x0 + bw + 3, Math.max(yl + 5, yb - (base + sc.builtCm) * k + 1));
+    d.setFont('helvetica', 'normal'); d.setTextColor(...PDFC.mute); d.text('pallet', x0 + bw + 3, yb - (base * k) / 2 + 1);
+  }
+  function pdfFinish(c, kind) {
+    const d = c.doc, n = d.getNumberOfPages();
+    for (let i = 1; i <= n; i++) {
+      d.setPage(i);
+      if (i > 1) {
+        d.setFillColor(...PDFC.band); d.rect(0, 0, c.W, 14, 'F');
+        d.setTextColor(255, 255, 255); d.setFont('helvetica', 'bold'); d.setFontSize(8); d.setCharSpace(1.2); d.text('MASTER CARTON PLANNER', c.M, 9); d.setCharSpace(0);
+        d.setFont('helvetica', 'normal'); d.text(pt(c.title.toUpperCase()), c.W - c.M, 9, { align: 'right' });
+      }
+      d.setDrawColor(...PDFC.line); d.setLineWidth(0.2); d.line(c.M, c.H - 13, c.W - c.M, c.H - 13);
+      d.setFont('helvetica', 'normal'); d.setFontSize(7); d.setTextColor(...PDFC.mute);
+      d.text(pt(`${kind} · generated ${isoDate()} by Master Carton Planner · theoretical estimates, confirm with a physical sample`), c.M, c.H - 8.5);
+      d.text(`${i} / ${n}`, c.W - c.M, c.H - 8.5, { align: 'right' });
+    }
+  }
+
+  // ---------- shared facts for both documents ----------
+  function packFacts(c) {
+    const f = c.flap, hz = [0, 1, 2].filter((i) => i !== f).sort((a, b) => c.inner[b] - c.inner[a]);
+    const words = c.arr
+      ? `${c.arr[hz[0]]} along the ${f1(c.inner[hz[0]])} cm side, ${c.arr[hz[1]]} along the ${f1(c.inner[hz[1]])} cm side, ${c.arr[f]} high. Each unit sits ${f1(c.ori[f])} cm tall on its ${f1(c.ori[hz[0]])} × ${f1(c.ori[hz[1]])} cm face.`
+      : 'The units do not fit this carton.';
+    const partial = c.arr && c.cap && c.cap > c.n ? ` The carton has room for ${c.cap}; fill the bottom positions first.` : '';
+    return { f, hz, words: words + partial,
+      innerTxt: `${f1(c.inner[hz[0]])} × ${f1(c.inner[hz[1]])} × ${f1(c.inner[f])} cm`,
+      outerTxt: `${f1(c.outer[hz[0]])} × ${f1(c.outer[hz[1]])} × ${f1(c.outer[f])} cm` };
+  }
+  function patternsOf(sc) {
+    const out = [];
+    sc.layers.forEach((l, i) => { let p = out.find((x) => x.pid === l.pid); if (!p) { p = { pid: l.pid, ly: l, idx: [] }; out.push(p); } p.idx.push(i + 1); });
+    return out;
+  }
+  // 3D images: pallet build steps, finished pallet, and the carton at four packing moments
+  function snapAll(c, sc, steps) {
+    const p = S.prm, out = { pallet: [], carton: [] };
+    if (PV.st.ok) {
+      PV.build(p, c, sc, { units: false, explode: 0, spread: 0 });
+      const keep = { th: PV.st.theta, ph: PV.st.phi };
+      PV.st.theta = -0.75; PV.st.phi = 1.0;
+      for (const k of steps) { PV.showLayers(k); out.pallet.push({ k, url: PV.st.snap(900, 760) }); }
+      PV.build(p, c, sc, { units: true, explode: 0, spread: 0 });
+      out.unitsView = PV.st.snap(900, 760);
+      PV.st.theta = keep.th; PV.st.phi = keep.ph;
+    }
+    if (CV.st.ok) {
+      CV.build(p, c, 0.6); // slightly see-through board, so the units inside can be counted
+      for (const v of [0.03, 0.64, 0.86, 1]) { CV.pose(v); out.carton.push(CV.st.snap(640, 640)); }
+    }
+    return out;
+  }
+
+  // ---------- document 1: loading instruction for the warehouse ----------
+  function buildLoadingPdf() {
+    const c = S.c, sc = c.scen[S.pal], p = S.prm, pal = sc.pal, pf = packFacts(c), pats = patternsOf(sc);
+    const L = sc.layers.length, steps = Array.from(new Set([1, 2, Math.ceil(L / 2), L].filter((k) => k >= 1 && k <= L))).sort((a, b) => a - b);
+    const img = snapAll(c, sc, steps);
+    const x = pdfCtx('Pallet loading instruction', `${c.n}-unit master carton · pallet ${f1(pal.L)} × ${f1(pal.W)} cm · max ${f1(pal.H)} cm${p.heightIncludesBase ? ' including the pallet' : ' of load'}`);
+    const inc = p.heightIncludesBase;
+    pdfTiles(x, [
+      ['Units per pallet', String(sc.units), `${sc.boxes} cartons × ${c.n}`],
+      ['Layers', String(L), `${pats.length} layer pattern${pats.length > 1 ? 's' : ''}`],
+      ['Total height', `${f1(sc.builtCm + (inc ? p.baseH : 0))} cm`, `limit ${f1(pal.H)} cm`],
+      ['Gross weight', `${fmt(sc.gross, 0)} kg`, `carton ${fmt(c.kg, 1)} kg`],
+    ]);
+
+    pdfH2(x, '1. Pack the master carton');
+    if (img.carton.length) {
+      const w = (x.W - 2 * x.M - 9) / 4;
+      pdfEnsure(x, w + 10);
+      const y0 = x.y, caps = ['Open carton, bottom taped', 'Units placed', 'End flaps folded', 'Closed and taped'];
+      img.carton.forEach((u, i) => { x.y = y0; pdfImage(x, u, w, w, caps[i], x.M + i * (w + 3)); });
+      x.y = y0 + w + 9;
+    }
+    pdfSteps(x, [
+      `Take a ${p.boardName} regular slotted carton, inside ${pf.innerTxt} (outside about ${pf.outerTxt}). Fold and tape the bottom flaps: short end flaps first, then the long flaps, tape along the centre seam.`,
+      `Place ${c.n} units: ${pf.words}`,
+      'Fold the two short end flaps in first, then the two long flaps over them. Tape along the centre seam and about 5 cm down each end.',
+      `Check the packed carton weighs about ${fmt(c.kg, 1)} kg and the top is flat (no bulging flaps). Apply the carton label on a long side.`,
+    ]);
+
+    pdfH2(x, '2. Build the pallet');
+    pdfPara(x, `Use a ${f1(pal.L)} × ${f1(pal.W)} cm pallet (${f1(p.baseH)} cm high). Keep every carton upright with its flaps on top. Load each layer from the far side towards you, following the numbers. No carton may stick out past the pallet edge.`);
+    let start = 0;
+    pats.forEach((pt_, i) => {
+      const ly = pt_.ly, w = 98, h = (pal.W / pal.L) * w;
+      pdfEnsure(x, h + 16);
+      pdfH3(x, `Pattern ${String.fromCharCode(65 + i)} · layer${pt_.idx.length > 1 ? 's' : ''} ${pt_.idx.length > 8 ? pt_.idx.slice(0, 8).join(', ') + ', …' : pt_.idx.join(', ')}`);
+      const y0 = x.y + 3;
+      pdfPlan(x, x.M + 4, y0, w, sc, ly, { numbers: true, sides: true, alt: i % 2 === 1 });
+      const tx = x.M + w + 12, tw = x.W - x.M - tx;
+      const prev = i > 0 ? ' Turned against the layer below, so each carton bridges the joint underneath.' : '';
+      x.y = y0 + 2;
+      pdfPara(x, `${ly.cnt} cartons, each ${f1(ly.h / 10)} cm tall.${prev}`, { x: tx, w: tw });
+      pdfPara(x, `Place cartons 1 to ${ly.cnt} in order. Push each one tight against its neighbours and line up the outer faces with the pallet edges.`, { x: tx, w: tw, color: PDFC.mute, size: 8.4 });
+      x.y = Math.max(x.y, y0 + h + 9);
+      start += ly.cnt;
+    });
+    if (img.pallet.length) {
+      const n = img.pallet.length, w = (x.W - 2 * x.M - 3 * (n - 1)) / n, h = w * (760 / 900);
+      pdfEnsure(x, h + 18);
+      pdfH3(x, 'Build progress');
+      const y0 = x.y;
+      img.pallet.forEach((s, i) => { x.y = y0; pdfImage(x, s.url, w, h, `After layer ${s.k} of ${L}`, x.M + i * (w + 3)); });
+      x.y = y0 + h + 9;
+    }
+
+    pdfH2(x, '3. Finish and check');
+    const w2 = 60;
+    pdfEnsure(x, 72);
+    const y0 = x.y;
+    pdfSide(x, x.M, y0, w2, 66, sc);
+    x.y = y0;
+    const tx = x.M + w2 + 26, tw = x.W - x.M - tx;
+    const checks = [
+      `Total height is ${f1(sc.builtCm + (inc ? p.baseH : 0))} cm${inc ? ' including the pallet' : ''}. It must not exceed ${f1(pal.H)} cm.`,
+      `${sc.units} units in ${sc.boxes} cartons on ${L} layers. Count before wrapping.`,
+      'No overhang on any side, all cartons upright, no crushed corners.',
+      'Fit corner boards on the four vertical edges and stretch wrap from the pallet base to the top layer (general good practice, follow your site standard).',
+      'Label the pallet on two adjacent sides and photograph it before dispatch.',
+    ];
+    checks.forEach((t) => {
+      const d = x.doc;
+      d.setFont('helvetica', 'normal'); d.setFontSize(9);
+      const lines = d.splitTextToSize(pt(t), tw - 7);
+      d.setDrawColor(...PDFC.accent); d.setLineWidth(0.4); d.rect(tx, x.y - 3, 3.4, 3.4, 'S');
+      d.setFont('helvetica', 'normal'); d.setFontSize(9); d.setTextColor(...PDFC.ink); d.text(lines, tx + 6, x.y);
+      x.y += lines.length * 4.1 + 2.6;
+    });
+    x.y = Math.max(x.y, y0 + 70);
+    if (img.unitsView) { pdfEnsure(x, 92 * (760 / 900) + 12); pdfH3(x, 'Finished pallet, units shown inside'); pdfImage(x, img.unitsView, 92, 92 * (760 / 900), null); x.y += 92 * (760 / 900) + 4; }
+    pdfFinish(x, 'Pallet loading instruction');
+    return x.doc;
+  }
+
+  // ---------- document 2: full specification for quality, packaging, logistics and supply chain ----------
+  function buildSpecPdf() {
+    const c = S.c, sc = c.scen[S.pal], p = S.prm, pal = sc.pal, pf = packFacts(c), pats = patternsOf(sc), inc = p.heightIncludesBase;
+    const img = snapAll(c, sc, [sc.layers.length]);
+    const x = pdfCtx('Packaging and logistics specification', `${p.unit.map(f1).join(' × ')} cm unit · ${c.n}-unit master carton · pallet option ${S.pal + 1} of ${p.pallets.length}`);
+    const m = sc.comp ? sc.comp.margin : null;
+    pdfTiles(x, [
+      ['Units per pallet', String(sc.units), `${sc.boxes} cartons × ${c.n}`],
+      ['Total height', `${f1(sc.builtCm + (inc ? p.baseH : 0))} cm`, `limit ${f1(pal.H)} cm`],
+      ['Volume used', pct(sc.fillMax), `${pct(sc.fillBuilt)} of built`],
+      ['Floor used', pct(sc.floorAvg || 0), `lowest layer ${pct(sc.floorMin || 0)}`],
+      ['Interlock', sc.minTie == null ? 'n/a' : Math.round(sc.minTie * 100) + '%', 'weakest joint'],
+      ['Compression', m == null || !isFinite(m) ? 'no load' : m.toFixed(1) + '×', 'strength vs need'],
+      ['Gross weight', `${fmt(sc.gross, 0)} kg`, `${fmt(c.kg, 1)} kg per carton`],
+      ['Chargeable / unit', `${fmt(sc.chgPerUnit, 2)} kg`, `1:${fmt(p.divisor, 0)} volumetric`],
+    ]);
+
+    pdfH2(x, '1. Product unit');
+    pdfTable(x, ['Item', 'Value'], [
+      ['Size (L × W × H)', `${p.unit.map(f1).join(' × ')} cm`], ['Weight', `${fmt(p.unitKg, 3)} kg`],
+      ['Volume', `${fmt(p.unit[0] * p.unit[1] * p.unit[2] / 1000, 2)} litres`], ['Keep upright', p.productUp ? 'Yes, height stays vertical' : 'No, any orientation'],
+    ], { columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold' } } });
+
+    pdfH2(x, '2. Master carton');
+    const block = c.block || (c.arr ? c.arr.map((v, i) => v * c.ori[i]) : c.inner);
+    const play = Math.max(...c.inner.map((v, i) => v - block[i]));
+    const yImg = x.y;
+    pdfTable(x, ['Item', 'Value'], [
+      ['Style', 'Regular slotted carton (RSC), FEFCO-ESBO code 0201, flaps top and bottom'], ['Board', `${p.boardName}`],
+      ['Wall thickness', `${f1(p.board.t)} mm`], ['Edge crush (ECT)', `${f1(p.board.ect)} kN/m (typical estimate)`],
+      ['Board weight', `${fmt(p.board.gsm, 2)} kg/m² (typical estimate)`],
+      ['Inside (L × W × H)', pf.innerTxt], ['Outside (L × W × H)', pf.outerTxt],
+      ['Wall allowance', `+${f1(2 * p.board.t / 10)} cm on length and width, +${f1(4 * p.board.t / 10)} cm on height (flaps)`],
+      ['Units per carton', `${c.n}`], ['Arrangement', pf.words], ['Packing clearance', `${f1(p.clearance)} cm per dimension · units can move up to ${f1(play)} cm`],
+      ['Carton board weight', `${fmt(c.tare, 2)} kg`], ['Packed weight', `${fmt(c.kg, 2)} kg`],
+      ['Outside volume', `${fmt(c.outer[0] * c.outer[1] * c.outer[2] / 1e6, 4)} m³`], ['Product fill', pct(c.cartonFill)],
+    ], { columnStyles: { 0: { cellWidth: 40, fontStyle: 'bold' }, 1: { cellWidth: 82 } }, margin: { left: x.M, right: 70, top: 24, bottom: 20 } });
+    if (img.carton.length) {
+      const yAfter = x.y; x.y = yImg;
+      pdfImage(x, img.carton[1], 52, 52, 'Units inside', x.W - x.M - 52); x.y = yImg + 62;
+      pdfImage(x, img.carton[3], 52, 52, 'Closed carton', x.W - x.M - 52);
+      x.y = Math.max(yAfter, yImg + 124);
+    }
+
+    pdfH2(x, '3. Pallet options compared');
+    pdfTable(x, ['Option', 'Pallet (cm)', 'Units', 'Cartons', 'Layers', 'Height', 'Volume', 'Floor', 'Interlock', 'Compr.', 'Gross kg', 'Chg kg/u', `+${f1(p.tolerance)} cm`],
+      c.scen.map((s, i) => [i === S.pal ? `${i + 1} (shown)` : String(i + 1), `${f1(s.pal.L)}×${f1(s.pal.W)}×${f1(s.pal.H)}`, String(s.units), String(s.boxes), String(s.layers.length),
+        `${f1(s.builtCm + (inc ? p.baseH : 0))}`, pct(s.fillMax), pct(s.floorAvg || 0), s.minTie == null ? 'n/a' : Math.round(s.minTie * 100) + '%',
+        s.comp && isFinite(s.comp.margin) ? s.comp.margin.toFixed(1) + '×' : 'no load', fmt(s.gross, 0), fmt(s.chgPerUnit, 2), c.tol ? String(c.tol[i]) : '']),
+      { styles: { fontSize: 7.4, cellPadding: 1.4, textColor: PDFC.ink, lineColor: PDFC.line, lineWidth: 0.2 } });
+    pdfPara(x, `Heights ${inc ? 'include' : 'exclude'} a ${f1(p.baseH)} cm pallet. Gross includes a ${fmt(p.palletTare, 0)} kg pallet. The last column is units per pallet if every outside size comes out ${f1(p.tolerance)} cm larger.`, { size: 8, color: PDFC.mute });
+
+    pdfH2(x, `4. Pallet build, option ${S.pal + 1}`);
+    if (img.pallet.length) {
+      const w = 96, h = w * (760 / 900), y0 = x.y;
+      pdfEnsure(x, h + 8);
+      pdfImage(x, img.pallet[0].url, w, h, 'Finished pallet');
+      pdfSide(x, x.M + w + 10, y0 + 4, 60, h - 6, sc);
+      x.y = y0 + h + 9;
+    }
+    pats.forEach((q, i) => {
+      const w = 84, h = (pal.W / pal.L) * w;
+      pdfEnsure(x, h + 14);
+      pdfH3(x, `Pattern ${String.fromCharCode(65 + i)} · ${q.ly.cnt} cartons · ${f1(q.ly.h / 10)} cm · layer${q.idx.length > 1 ? 's' : ''} ${q.idx.join(', ')}`);
+      pdfPlan(x, x.M + 4, x.y + 3, w, sc, q.ly, { alt: i % 2 === 1 });
+      x.y += h + 10;
+    });
+
+    pdfH2(x, '5. Compression strength');
+    if (sc.comp && isFinite(sc.comp.margin)) {
+      pdfTable(x, ['Item', 'Value'], [
+        ['Method', 'McKee short formula: BCT = 5.87 × ECT × sqrt(wall thickness × carton perimeter)'],
+        ['Weakest carton', `layer ${sc.comp.layer + 1} of ${sc.layers.length}`],
+        ['Estimated strength', `${fmt(sc.comp.strength / 9.81, 0)} kgf (after interlock and orientation reductions)`],
+        ['Load on that carton', `${fmt(sc.comp.loadN / 9.81, 0)} kgf${p.palletStack > 1 ? ` (incl. ${p.palletStack - 1} pallet${p.palletStack > 2 ? 's' : ''} stacked on top)` : ''}`],
+        ['Safety factor', `${fmt(p.sf, 1)} (humidity, time, handling)`], ['Required strength', `${fmt(sc.comp.needed / 9.81, 0)} kgf`],
+        ['Margin', `${sc.comp.margin.toFixed(2)}× (${sc.comp.margin >= 1 ? 'meets' : 'below'} requirement)`],
+        ['Interlock strength kept', `${fmt(p.interlockKeep * 100, 0)}% where the layer above is turned`],
+      ], { columnStyles: { 0: { cellWidth: 48, fontStyle: 'bold' } } });
+    } else pdfPara(x, 'No carton carries another carton in this build, so no compression check applies.');
+
+    pdfH2(x, '6. Transit test readiness (theoretical)');
+    const chk = getChecks(c, sc);
+    pdfTable(x, ['Status', 'Area', 'Check', 'Value', 'Basis'], chk.map((k) => [PWORD[k.st], k.grp === 'Pallet' ? 'Pallet (ISTA 1E/3E)' : 'Carton (ISTA 1A/2A)', k.what, k.val, k.basis]), {
+      columnStyles: { 0: { cellWidth: 15, fontStyle: 'bold' }, 1: { cellWidth: 28 }, 2: { cellWidth: 26, fontStyle: 'bold' }, 3: { cellWidth: 30 } },
+      didParseCell: (d) => { if (d.section === 'body' && d.column.index === 0) { const st = chk[d.row.index].st; d.cell.styles.textColor = PDFC[st]; } },
+      styles: { fontSize: 7.4, cellPadding: 1.5, textColor: PDFC.ink, lineColor: PDFC.line, lineWidth: 0.2 },
+    });
+
+    pdfH2(x, '7. Board alternatives');
+    pdfTable(x, ['Board', 'Wall (mm)', 'Outside (cm)', 'Carton kg', ...p.pallets.map((_, k) => `Opt ${k + 1} units`), 'Compression'], BOARDS.map((b) => {
+      const p2 = Object.assign({}, p, { board: { t: b.t, ect: b.ect, gsm: b.gsm } });
+      const cc = c.custom ? E.evalCustom(p2, c.inner, c.n, c.flap) : E.evalArrangement(p2, c.arr, c.ori, c.flap);
+      const s2 = cc.scen[S.pal], m2 = s2.comp ? s2.comp.margin : null;
+      return [b.name + (Math.abs(b.t - p.board.t) < 1e-9 && Math.abs(b.ect - p.board.ect) < 1e-9 ? ' (in use)' : ''), b.t.toFixed(1), cc.outer.map(f1).join(' × '), fmt(cc.kg, 1), ...cc.scen.map((z) => String(z.units)), m2 == null || !isFinite(m2) ? 'no load' : m2.toFixed(1) + '×'];
+    }), { styles: { fontSize: 7.6, cellPadding: 1.5, textColor: PDFC.ink, lineColor: PDFC.line, lineWidth: 0.2 } });
+
+    pdfH2(x, '8. Freight and supply chain');
+    const per = (q) => Math.ceil(q / sc.units);
+    pdfTable(x, ['Item', 'Value'], [
+      ['Chargeable weight per pallet', `${fmt(sc.chg, 1)} kg (gross ${fmt(sc.gross, 0)} kg, volumetric ${fmt(sc.volKg, 0)} kg at 1:${fmt(p.divisor, 0)})`],
+      ['Chargeable weight per unit', `${fmt(sc.chgPerUnit, 3)} kg`],
+      ...(sc.costPerUnit != null ? [['Freight cost per unit', `${fmt(sc.costPerUnit, 3)} at ${fmt(p.rate, 2)} per chargeable kg`]] : []),
+      ['Pallets for 1,000 units', `${per(1000)} pallets · ${Math.ceil(1000 / c.n)} cartons`],
+      ['Pallets for 10,000 units', `${per(10000)} pallets · ${Math.ceil(10000 / c.n)} cartons`],
+      ['Pallet footprint', `${f1(pal.L)} × ${f1(pal.W)} cm (${fmt(pal.L * pal.W / 10000, 2)} m²)`],
+      ['Units per m² of floor', fmt(sc.units / (pal.L * pal.W / 10000), 1)],
+      ['Loose-unit ceiling', `${S.result.loose[S.pal]} units with no carton and no interlock rule`],
+    ], { columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold' } } });
+
+    pdfH2(x, '9. Quality and approval checklist');
+    pdfSteps(x, [
+      `Physical sample: outside size within ${f1(p.tolerance)} cm of ${pf.outerTxt}; check the short side first, it sets the layer count.`,
+      `Board certificate from the supplier: ${p.boardName}, thickness ${f1(p.board.t)} mm measured to ISO 3034, edge crush of at least ${f1(p.board.ect)} kN/m to ISO 3037 or TAPPI T 811.`,
+      `Box compression test (ISO 12048 or ASTM D642) on a packed sample: at least ${sc.comp && isFinite(sc.comp.margin) ? fmt(sc.comp.needed / 9.81, 0) + ' kgf' : 'the load in section 5'}.`,
+      'Drop and vibration test of a packed carton to ISTA 1A or 2A, and of a full pallet to ISTA 1E or 3E, at an accredited lab.',
+      'Trial pallet built from these instructions: confirm count, height, interlock and stretch wrap before the first shipment.',
+    ]);
+
+    pdfH2(x, '10. Method and assumptions');
+    [
+      'Cartons are regular slotted cartons (FEFCO-ESBO code 0201) built around a block of units plus packing clearance. Side walls add 2 board thicknesses per dimension; the flap direction adds 4.',
+      'Board thickness defaults sit at or above the Fibre Box Association nominal flute thickness and the top of the DIN 55468 flute height ranges. Measured thickness (ISO 3034), edge crush (ISO 3037 or TAPPI T 811) and board weight must be replaced with the supplier figures.',
+      'Compression strength uses the McKee estimate and must be confirmed by a box compression test (ISO 12048 or ASTM D642).',
+      'Layers come from guillotine and 5-block patterns. With brick wall on, every layer must bridge the joints below by the share set, and each carton needs 75% of its base supported.',
+      'Transit checks map to ISTA 1A, 2A (single cartons up to 68 kg) and 1E, 3E (unit loads) using the public procedure overviews. Drop heights and test loads come from the full procedures, which are not public.',
+      `Inputs used: brick wall ${p.brick ? `on, ${fmt(p.brickMin * 100, 0)}% bridging at ${fmt(p.tieOverlap * 100, 0)}% overlap` : 'off'}; cartons ${p.upright ? 'kept upright' : 'free to turn'}; overhang ${f1(p.overhang)} cm; pallets stacked ${p.palletStack}.`,
+      'All figures are theoretical estimates. Approve the carton and pallet with a physical sample and lab tests.',
+    ].forEach((t) => pdfPara(x, '• ' + t, { size: 8.6 }));
+    pdfFinish(x, 'Packaging and logistics specification');
+    return x.doc;
+  }
+
+  async function exportPdf(kind) {
+    const btn = kind === 'load' ? $('#pdf_load') : $('#pdf_spec'), label = btn.textContent;
+    if (!S.c || !S.prm) return;
+    if (!window.jspdf || !window.jspdf.jsPDF) { $('#pdf_note').textContent = 'The PDF library did not load. Check your connection and reload the page.'; return; }
+    btn.disabled = true; btn.textContent = 'Building PDF';
+    await new Promise((r) => setTimeout(r, 30));
+    let doc;
+    try { doc = kind === 'load' ? buildLoadingPdf() : buildSpecPdf(); }
+    catch (err) { $('#pdf_note').textContent = `The PDF could not be built: ${err.message}.`; btn.disabled = false; btn.textContent = label; renderSelected(); return; }
+    renderSelected(); // put the 3D views back the way they were
+    const sc = S.c.scen[S.pal];
+    const name = `${kind === 'load' ? 'loading-instruction' : 'packaging-spec'}_${S.c.n}u_${f1(sc.pal.L)}x${f1(sc.pal.W)}_${isoDate()}.pdf`;
+    const blob = doc.output('blob');
+    // opened as a plain file or on another host (no claude.ai viewer): a normal browser download works there
+    if (!window.claude) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      $('#pdf_note').textContent = `Downloaded ${name}.`;
+      btn.disabled = false; btn.textContent = label;
+      return;
+    }
+    try {
+      if (!downloads) throw { code: 'unavailable' };
+      await downloads.save({ filename: name, data: blob });
+      $('#pdf_note').textContent = `Saved ${name}.`;
+    } catch (err) {
+      const code = err && err.code;
+      $('#pdf_note').textContent = code === 'declined' ? 'Save cancelled.' : code === 'rate_limited' ? 'A save prompt is already open. Finish it, then try again.'
+        : 'Saving files is not available in this view. Open the planner in claude.ai and allow downloads when asked.';
+    }
+    btn.disabled = false; btn.textContent = label;
+  }
+  $('#pdf_load').addEventListener('click', () => exportPdf('load'));
+  $('#pdf_spec').addEventListener('click', () => exportPdf('spec'));
+
+  // ---------- reset: every input back to its starting value, product fields empty, results cleared ----------
+  let resetArmed = 0;
+  function clearResults() {
+    S.runId++; S.busy = false; clearInterval(S.tick);
+    if (S.worker) { S.worker.terminate(); S.worker = undefined; }
+    S.result = null; S.sel = null; S.c = null; S.prm = null; S.pal = 0; S.sorted = []; S.pendingPal = null;
+    PV.stop(); CV.stop();
+    if (PV.st.ok) { PV.st.clear(); PV.st.draw(); }
+    if (CV.st.ok) { CV.st.clear(); CV.st.draw(); }
+    $('#sel_label').textContent = 'No calculation yet';
+    $('#sel_title').textContent = 'Enter a product and press Calculate';
+    $('#kpis').innerHTML = ''; $('#hud').textContent = ''; $('#hud_c').textContent = '';
+    $('#pal_seg').hidden = true; $('#pal_seg').innerHTML = '';
+    $('#res_head').innerHTML = '';
+    $('#res_body').innerHTML = '<tr><td>No results yet. Enter the product size and weight, then press Calculate.</td></tr>';
+    $('#opt_note').textContent = ''; $('#plans').innerHTML = ''; $('#checks').innerHTML = ''; $('#board_table').innerHTML = ''; $('#board_note').textContent = '';
+    $('.main-col').classList.remove('stale');
+    $('#pdf_load').disabled = $('#pdf_spec').disabled = true;
+  }
+  function resetAll() {
+    HTMLFormElement.prototype.reset.call($('#inputs')); // every field back to the value it had when the page opened
+    ['u_l', 'u_w', 'u_h', 'u_kg'].forEach((id) => { $('#' + id).value = ''; });
+    $('#brick').checked = true; $('#show_units').checked = false; $('#xray').checked = false;
+    $('#explode').value = 0; $('#spread').value = 0; $('#sort_by').value = 'units'; S.sort = 'units';
+    $('#custom_msg').hidden = true; $('#csv_out').hidden = true;
+    pallets = [{ L: 120, W: 80, H: 150 }];
+    renderPalList(); renderBoardViz(); clearResults();
+    S.dirty = false;
+    $('#calc').disabled = false; $('#calc').textContent = 'Calculate';
+    $('#calc_bar').classList.remove('dirty');
+    $('#run_status').textContent = 'All inputs reset. Enter the product size and weight, then press Calculate.';
+    $('#inputs details').open = true; $('#u_l').focus();
+  }
+  $('#reset_all').addEventListener('click', () => {
+    // two-step so a stray click does not wipe the inputs
+    if (!resetArmed) {
+      resetArmed = setTimeout(() => { resetArmed = 0; $('#reset_all').textContent = 'Reset'; $('#reset_all').classList.remove('confirm'); }, 3000);
+      $('#reset_all').textContent = 'Click again to reset'; $('#reset_all').classList.add('confirm');
+      return;
+    }
+    clearTimeout(resetArmed); resetArmed = 0;
+    $('#reset_all').textContent = 'Reset'; $('#reset_all').classList.remove('confirm');
+    resetAll();
+  });
+
+  renderPalList();
+  renderBoardViz();
+  runAll(false);
+})();
+</script>
